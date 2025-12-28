@@ -13,6 +13,31 @@
 			<void_safety support="all"/>
 		</capability>
 		<external_include location="$(SIMPLE_EIFFEL)/simple_speech/Clib"/>
+		<external_object location="$(SIMPLE_EIFFEL)/simple_speech/lib/whisper.lib">
+			<condition>
+				<platform value="windows"/>
+			</condition>
+		</external_object>
+		<external_object location="$(SIMPLE_EIFFEL)/simple_speech/lib/ggml.lib">
+			<condition>
+				<platform value="windows"/>
+			</condition>
+		</external_object>
+		<external_object location="$(SIMPLE_EIFFEL)/simple_speech/lib/ggml-base.lib">
+			<condition>
+				<platform value="windows"/>
+			</condition>
+		</external_object>
+		<external_object location="$(SIMPLE_EIFFEL)/simple_speech/lib/ggml-cpu.lib">
+			<condition>
+				<platform value="windows"/>
+			</condition>
+		</external_object>
+		<external_object location="$(SIMPLE_EIFFEL)/simple_speech/lib/whisper_wrapper.lib">
+			<condition>
+				<platform value="windows"/>
+			</condition>
+		</external_object>
 		<library name="base" location="$ISE_LIBRARY/library/base/base.ecf"/>
 		<library name="time" location="$ISE_LIBRARY/library/time/time.ecf"/>
 		<cluster name="src" location=".\src\" recursive="true"/>
@@ -22,5 +47,10 @@
 		<setting name="console_application" value="true"/>
 		<library name="testing" location="$ISE_LIBRARY/library/testing/testing.ecf"/>
 		<cluster name="tests" location=".\testing\"/>
+	</target>
+	<target name="demo" extends="simple_speech">
+		<root class="DEMO_TRANSCRIBE" feature="make"/>
+		<setting name="console_application" value="true"/>
+		<cluster name="demo_app" location=".\testing\"/>
 	</target>
 </system>

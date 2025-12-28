@@ -46,6 +46,7 @@ feature {NONE} -- Initialization
 		do
 			create l_engine.make
 			engine := l_engine
+			create wav_reader.make
 			if not engine.load_model (a_model_path) then
 				last_error := engine.last_error
 			end
@@ -59,6 +60,7 @@ feature {NONE} -- Initialization
 			engine_not_void: an_engine /= Void
 		do
 			engine := an_engine
+			create wav_reader.make
 		ensure
 			engine_set: engine = an_engine
 		end
@@ -120,13 +122,16 @@ feature -- Operations
 		require
 			valid: is_valid
 			path_not_empty: not a_wav_path.is_empty
+		local
+			l_samples: detachable ARRAY [REAL_32]
 		do
-			-- TODO Phase 1: Load WAV via simple_audio
-			-- samples := load_wav (a_wav_path)
-			-- Result := engine.transcribe (samples, sample_rate)
-			
-			-- STUB: Return empty list
-			create Result.make (0)
+			l_samples := wav_reader.load_file (a_wav_path)
+			if attached l_samples as samples then
+				Result := engine.transcribe (samples, wav_reader.target_sample_rate)
+			else
+				last_error := wav_reader.last_error
+				create Result.make (0)
+			end
 		ensure
 			result_exists: Result /= Void
 		end
@@ -155,6 +160,9 @@ feature {NONE} -- Implementation
 
 	engine: SPEECH_ENGINE
 			-- The underlying speech engine.
+
+	wav_reader: WAV_READER
+			-- WAV file reader.
 
 invariant
 	engine_exists: engine /= Void

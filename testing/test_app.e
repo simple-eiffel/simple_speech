@@ -54,6 +54,8 @@ feature {NONE} -- Test Runners
 			create tests
 			run_test (agent tests.test_creation_stub, "test_creation_stub")
 			run_test (agent tests.test_fluent_config, "test_fluent_config")
+			run_test (agent tests.test_wav_reader, "test_wav_reader")
+			run_test (agent tests.test_real_transcription, "test_real_transcription")
 		end
 
 feature {NONE} -- Test Infrastructure

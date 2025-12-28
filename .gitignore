@@ -3,8 +3,10 @@ EIFGENs/
 Documentation/
 
 # Models (large files - user downloads)
-models/*.bin
-models/*.ggml
+models/
+
+# Libraries (compiled binaries)
+lib/
 
 # Compiled files
 *.melted
@@ -14,6 +16,7 @@ models/*.ggml
 *.dll
 *.so
 *.dylib
+*.lib
 
 # Backup files
 *.swp

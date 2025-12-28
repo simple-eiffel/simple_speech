@@ -7,8 +7,8 @@ note
 		
 		Based on whisper.cpp v1.8.2 API.
 		
-		PHASE 0: Stub implementation (compiles but doesn't transcribe)
-		PHASE 1: Real whisper.cpp integration via inline C externals
+		Uses a C wrapper (whisper_wrapper.c) to avoid struct-by-value
+		complexity and Eiffel macro conflicts.
 	]"
 	author: "Larry Rix"
 
@@ -26,10 +26,9 @@ feature {NONE} -- Initialization
 	make
 			-- Create engine (model not yet loaded).
 		do
-			language := "auto"
+			language := "en"
 			thread_count := 4
 			translate_to_english := False
-			model_loaded := False
 		ensure
 			not_ready: not is_ready
 		end
@@ -39,13 +38,13 @@ feature -- Status
 	is_ready: BOOLEAN
 			-- Is the engine initialized and ready?
 		do
-			Result := model_loaded
+			Result := ctx /= default_pointer
 		end
 
 	is_model_loaded: BOOLEAN
 			-- Is a model loaded?
 		do
-			Result := model_loaded
+			Result := ctx /= default_pointer
 		end
 
 	last_error: detachable STRING_32
@@ -94,36 +93,86 @@ feature -- Operations
 	load_model (a_path: READABLE_STRING_GENERAL): BOOLEAN
 			-- Load whisper model from file.
 		local
-			l_path: STRING_8
+			l_path: C_STRING
 		do
-			l_path := a_path.to_string_8
-			
-			-- STUB: Simulate success (Phase 1 will use real whisper)
-			-- TODO Phase 1: ctx := c_whisper_init_from_file (l_path.to_c)
-			
-			create model_path.make_from_string_general (a_path)
-			model_loaded := True
-			Result := True
+			create l_path.make (a_path.to_string_8)
+			ctx := c_whisper_wrapper_init (l_path.item)
+			if ctx /= default_pointer then
+				create model_path.make_from_string_general (a_path)
+				Result := True
+			else
+				last_error := {STRING_32} "Failed to load model: " + a_path.to_string_32
+			end
 		end
 
 	transcribe (a_samples: ARRAY [REAL_32]; a_sample_rate: INTEGER): ARRAYED_LIST [SPEECH_SEGMENT]
 			-- Transcribe audio samples.
+		local
+			l_special: SPECIAL [REAL_32]
+			l_lang: C_STRING
+			l_result: INTEGER
+			i, n: INTEGER
+			l_text_ptr: POINTER
+			l_text: STRING_8
+			l_t0, l_t1: INTEGER_64
+			l_start, l_end: REAL_64
+			l_segment: SPEECH_SEGMENT
+			l_translate: INTEGER
 		do
 			create Result.make (10)
 			
-			-- STUB: Return empty list (Phase 1 will use real whisper)
-			-- TODO Phase 1: Implement with inline C
+			if ctx /= default_pointer and then a_samples.count > 0 then
+				-- Get native array pointer
+				l_special := a_samples.to_special
+				
+				-- Set language
+				create l_lang.make (language)
+				
+				-- Translate flag
+				if translate_to_english then
+					l_translate := 1
+				else
+					l_translate := 0
+				end
+				
+				-- Run whisper transcription
+				l_result := c_whisper_wrapper_transcribe (ctx, l_special.base_address, a_samples.count, thread_count, l_lang.item, l_translate)
+				
+				if l_result = 0 then
+					-- Get segments
+					n := c_whisper_wrapper_n_segments (ctx)
+					from i := 0 until i >= n loop
+						-- Get segment text
+						l_text_ptr := c_whisper_wrapper_segment_text (ctx, i)
+						if l_text_ptr /= default_pointer then
+							create l_text.make_from_c (l_text_ptr)
+							if not l_text.is_empty then
+								-- Get timestamps (in centiseconds, convert to seconds)
+								l_t0 := c_whisper_wrapper_segment_t0 (ctx, i)
+								l_t1 := c_whisper_wrapper_segment_t1 (ctx, i)
+								l_start := l_t0 / 100.0
+								l_end := l_t1 / 100.0
+								
+								create l_segment.make (l_text, l_start, l_end)
+								Result.extend (l_segment)
+							end
+						end
+						i := i + 1
+					end
+				else
+					last_error := {STRING_32} "Transcription failed with code: " + l_result.out
+				end
+			end
 		end
 
 	dispose
 			-- Release whisper context.
 		do
 			if ctx /= default_pointer then
-				-- TODO Phase 1: c_whisper_free (ctx)
+				c_whisper_wrapper_free (ctx)
 				ctx := default_pointer
 			end
 			model_path := Void
-			model_loaded := False
 		end
 
 feature {NONE} -- Implementation
@@ -131,19 +180,63 @@ feature {NONE} -- Implementation
 	ctx: POINTER
 			-- Opaque whisper_context pointer.
 
-	model_loaded: BOOLEAN
-			-- Stub flag: True when load_model was called.
+feature {NONE} -- C Externals (whisper_wrapper.c)
 
-feature {NONE} -- Inline C Externals (Phase 1)
+	c_whisper_wrapper_init (a_path: POINTER): POINTER
+			-- Initialize whisper context from model file.
+		external
+			"C (const char*): void* | %"whisper_wrapper.h%""
+		alias
+			"whisper_wrapper_init"
+		end
 
-	-- All whisper.cpp C API calls will go here in Phase 1.
-	-- c_whisper_init_from_file (path: POINTER): POINTER
-	-- c_whisper_full (ctx: POINTER; ...): INTEGER
-	-- c_whisper_n_segments (ctx: POINTER): INTEGER
-	-- c_whisper_segment_text (ctx: POINTER; i: INTEGER): POINTER
-	-- c_whisper_segment_t0 (ctx: POINTER; i: INTEGER): INTEGER_64
-	-- c_whisper_segment_t1 (ctx: POINTER; i: INTEGER): INTEGER_64
-	-- c_whisper_free (ctx: POINTER)
+	c_whisper_wrapper_transcribe (a_ctx, a_samples: POINTER; a_n_samples, a_n_threads: INTEGER; a_language: POINTER; a_translate: INTEGER): INTEGER
+			-- Run full transcription pipeline.
+		external
+			"C (void*, const float*, int, int, const char*, int): int | %"whisper_wrapper.h%""
+		alias
+			"whisper_wrapper_transcribe"
+		end
+
+	c_whisper_wrapper_n_segments (a_ctx: POINTER): INTEGER
+			-- Number of segments in transcription result.
+		external
+			"C (void*): int | %"whisper_wrapper.h%""
+		alias
+			"whisper_wrapper_n_segments"
+		end
+
+	c_whisper_wrapper_segment_text (a_ctx: POINTER; a_index: INTEGER): POINTER
+			-- Get text of segment at index.
+		external
+			"C (void*, int): const char* | %"whisper_wrapper.h%""
+		alias
+			"whisper_wrapper_segment_text"
+		end
+
+	c_whisper_wrapper_segment_t0 (a_ctx: POINTER; a_index: INTEGER): INTEGER_64
+			-- Get start timestamp (centiseconds) of segment at index.
+		external
+			"C (void*, int): int64_t | %"whisper_wrapper.h%""
+		alias
+			"whisper_wrapper_segment_t0"
+		end
+
+	c_whisper_wrapper_segment_t1 (a_ctx: POINTER; a_index: INTEGER): INTEGER_64
+			-- Get end timestamp (centiseconds) of segment at index.
+		external
+			"C (void*, int): int64_t | %"whisper_wrapper.h%""
+		alias
+			"whisper_wrapper_segment_t1"
+		end
+
+	c_whisper_wrapper_free (a_ctx: POINTER)
+			-- Free whisper context.
+		external
+			"C (void*) | %"whisper_wrapper.h%""
+		alias
+			"whisper_wrapper_free"
+		end
 
 invariant
 	valid_threads: thread_count > 0
