@@ -26,3 +26,4 @@ models/
 # Whisper binaries (build from source or download from releases)
 whisper-cli.exe
 lib/*.dll
+exception_trace.log
