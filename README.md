@@ -39,7 +39,7 @@ Most speech-to-text tools stop at text. **simple_speech** delivers *structure*:
 3. **Media-native outputs** - Embedded captions and chapters in containers
 4. **Algorithmic-first, AI-optional** - 45+ transition patterns, AI enhancement available
 
-## Quick Start
+## Quick Start with SPEECH_QUICK
 
 ```eiffel
 local
@@ -158,6 +158,7 @@ embedder.embed_all (video, segments, chapters, output)
 
 | Class | Purpose |
 |-------|---------|
+| `SPEECH_QUICK` | **Facade** - One-stop API for common workflows |
 | `SPEECH_PIPELINE` | End-to-end video/audio transcription |
 | `SPEECH_EXPORTER` | SRT, VTT, JSON, TXT export |
 | `SPEECH_TRANSITION_DETECTOR` | Algorithmic chapter detection |
@@ -188,7 +189,8 @@ ec -batch -config simple_speech.ecf -target demo_embed -c_compile
 
 - simple_ffmpeg (video processing)
 - simple_ai_client (optional AI features)
-- ISE base, time
+- simple_datetime (time handling)
+- ISE base
 
 ## License
 
