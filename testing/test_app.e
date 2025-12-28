@@ -11,19 +11,13 @@ create
 feature {NONE} -- Initialization
 
 	make
-			-- Run the tests.
 		do
 			print ("Running simple_speech tests...%N%N")
 			passed := 0
 			failed := 0
-
-			run_segment_tests
-			run_speech_tests
-			run_export_tests
-
+			run_lib_tests
 			print ("%N========================%N")
 			print ("Results: " + passed.out + " passed, " + failed.out + " failed%N")
-
 			if failed > 0 then
 				print ("TESTS FAILED%N")
 			else
@@ -33,70 +27,66 @@ feature {NONE} -- Initialization
 
 feature {NONE} -- Test Runners
 
-	run_segment_tests
-			-- Run SPEECH_SEGMENT tests.
-		local
-			tests: TEST_SEGMENT
+	run_lib_tests
 		do
+			create lib_tests
+			
+			-- SPEECH_SEGMENT tests
 			print ("--- SPEECH_SEGMENT Tests ---%N")
-			create tests
-			run_test (agent tests.test_make, "test_make")
-			run_test (agent tests.test_make_with_confidence, "test_make_with_confidence")
-			run_test (agent tests.test_duration, "test_duration")
-			run_test (agent tests.test_time_formatting, "test_time_formatting")
-		end
-
-	run_speech_tests
-			-- Run SIMPLE_SPEECH tests.
-		local
-			tests: TEST_SPEECH
-		do
-			print ("%N--- SIMPLE_SPEECH Tests ---%N")
-			create tests
-			run_test (agent tests.test_creation_stub, "test_creation_stub")
-			run_test (agent tests.test_fluent_config, "test_fluent_config")
-			run_test (agent tests.test_wav_reader, "test_wav_reader")
-			run_test (agent tests.test_real_transcription, "test_real_transcription")
-		end
-
-	run_export_tests
-			-- Run export format tests.
-		local
-			tests: TEST_EXPORT
-		do
+			run_test (agent lib_tests.test_segment_creation, "test_segment_creation")
+			run_test (agent lib_tests.test_segment_timing, "test_segment_timing")
+			run_test (agent lib_tests.test_segment_confidence, "test_segment_confidence")
+			
+			-- SPEECH_CHAPTER tests
+			print ("%N--- SPEECH_CHAPTER Tests ---%N")
+			run_test (agent lib_tests.test_chapter_creation, "test_chapter_creation")
+			run_test (agent lib_tests.test_chapter_timing, "test_chapter_timing")
+			
+			-- Export tests
 			print ("%N--- EXPORT Tests ---%N")
-			create tests
-			run_test (agent tests.test_vtt_export, "test_vtt_export")
-			run_test (agent tests.test_srt_export, "test_srt_export")
-			run_test (agent tests.test_json_export, "test_json_export")
-			run_test (agent tests.test_txt_export, "test_txt_export")
-			run_test (agent tests.test_unified_exporter, "test_unified_exporter")
-			run_test (agent tests.test_file_export, "test_file_export")
+			run_test (agent lib_tests.test_vtt_exporter, "test_vtt_exporter")
+			run_test (agent lib_tests.test_srt_exporter, "test_srt_exporter")
+			run_test (agent lib_tests.test_json_exporter, "test_json_exporter")
+			
+			-- Detector tests
+			print ("%N--- TRANSITION_DETECTOR Tests ---%N")
+			run_test (agent lib_tests.test_detector_creation, "test_detector_creation")
+			run_test (agent lib_tests.test_detector_sensitivity, "test_detector_sensitivity")
+			run_test (agent lib_tests.test_detector_min_duration, "test_detector_min_duration")
+			
+			-- SPEECH_QUICK tests
+			print ("%N--- SPEECH_QUICK Tests ---%N")
+			run_test (agent lib_tests.test_quick_creation, "test_quick_creation")
+			run_test (agent lib_tests.test_quick_status, "test_quick_status")
+			
+			-- Memory Monitor tests
+			print ("%N--- MEMORY_MONITOR Tests ---%N")
+			run_test (agent lib_tests.test_memory_monitor, "test_memory_monitor")
 		end
 
 feature {NONE} -- Test Infrastructure
 
 	run_test (a_test: PROCEDURE; a_name: STRING)
-			-- Run a single test with error handling.
 		local
 			l_failed: BOOLEAN
 		do
 			if not l_failed then
 				a_test.call (Void)
-				print ("  PASS: " + a_name + "%N")
 				passed := passed + 1
+				print ("[PASS] " + a_name + "%N")
 			end
 		rescue
-			print ("  FAIL: " + a_name + "%N")
-			failed := failed + 1
 			l_failed := True
+			failed := failed + 1
+			print ("[FAIL] " + a_name + "%N")
 			retry
 		end
 
 	passed: INTEGER
-			-- Number of passed tests.
-
 	failed: INTEGER
-			-- Number of failed tests.
+
+feature {NONE} -- Test Objects
+
+	lib_tests: LIB_TESTS
 
 end

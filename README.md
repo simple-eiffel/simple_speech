@@ -26,7 +26,7 @@ Most speech-to-text tools stop at text. **simple_speech** delivers *structure*:
 | Embedded metadata | Extremely rare | Yes |
 | Offline determinism | High-trust differentiator | Yes |
 
-> *We don't just transcribe media. We make it self-describing - automatically.*
+> *We do not just transcribe media. We make it self-describing - automatically.*
 
 ## Status
 
@@ -39,151 +39,178 @@ Most speech-to-text tools stop at text. **simple_speech** delivers *structure*:
 3. **Media-native outputs** - Embedded captions and chapters in containers
 4. **Algorithmic-first, AI-optional** - 45+ transition patterns, AI enhancement available
 
-## Quick Start with SPEECH_QUICK
-
-```eiffel
-local
-    pipeline: SPEECH_PIPELINE
-    result: SPEECH_CHAPTERED_RESULT
-do
-    -- Transcribe video with auto-chaptering
-    create pipeline.make ("models/ggml-base.en.bin")
-    
-    if pipeline.is_ready then
-        create result.make (pipeline.transcribe ("video.mp4"))
-        result.detect_chapters
-        
-        -- Export chapters
-        result.export_chapters_json ("chapters.json")
-        result.export_full_vtt ("captions.vtt")
-    end
-end
-```
-
-## Embedded Media (Phase 7)
-
-Create self-describing video files with embedded captions and navigable chapters:
-
-```eiffel
-local
-    embedder: SPEECH_VIDEO_EMBEDDER
-do
-    create embedder.make (pipeline)
-    
-    -- Embed captions + chapters into video container
-    if embedder.embed_all ("input.mp4", segments, chapters, "output.mp4") then
-        print ("Video now contains embedded subtitles and chapter markers%N")
-    end
-end
-```
-
-The output video plays in VLC, YouTube, or any modern player with:
-- Toggleable soft subtitles
-- Navigable chapter markers
-- No sidecar files needed
-
 ## Installation
 
-1. Set environment variable:
+### 1. Environment Setup
+
+Set the SIMPLE_EIFFEL environment variable to your installation directory:
+
+**Windows (Command Prompt):**
 ```batch
-set SIMPLE_EIFFEL=D:\prod
+set SIMPLE_EIFFEL=C:\path\to\your\eiffel\libraries
 ```
 
-2. Add to your ECF:
+**Windows (PowerShell):**
+```powershell
+$env:SIMPLE_EIFFEL = "C:\path\to\your\eiffel\libraries"
+```
+
+**Windows (Permanent - System Properties):**
+1. Open System Properties > Advanced > Environment Variables
+2. Add new User or System variable:
+   - Name: `SIMPLE_EIFFEL`
+   - Value: `C:\path\to\your\eiffel\libraries`
+
+### 2. FFmpeg Installation (Required for Video Support)
+
+FFmpeg is required for video processing, audio extraction, and metadata embedding.
+
+**Windows Installation:**
+
+1. Download FFmpeg from [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) (recommended)
+   - Choose "ffmpeg-release-essentials.zip" for most users
+   - Or "ffmpeg-release-full.zip" for all codecs
+
+2. Extract to a permanent location (e.g., `C:\ffmpeg`)
+
+3. Add to PATH:
+   - Open System Properties > Advanced > Environment Variables
+   - Edit the `Path` variable (User or System)
+   - Add: `C:\ffmpeg\bin`
+
+4. Verify installation:
+```batch
+ffmpeg -version
+ffprobe -version
+```
+
+Both commands should display version information. If not, restart your terminal.
+
+### 3. Whisper.cpp Setup (Required)
+
+simple_speech uses [whisper.cpp](https://github.com/ggerganov/whisper.cpp) for local transcription.
+
+**Option A: Download Pre-built Binary (Recommended)**
+
+1. Go to [whisper.cpp Releases](https://github.com/ggerganov/whisper.cpp/releases)
+2. Download the latest Windows release (e.g., `whisper-bin-x64.zip`)
+3. Extract `whisper-cli.exe` to a folder in your PATH (e.g., `C:\whisper\`)
+4. Add to PATH if needed
+
+**Option B: Build from Source**
+
+```batch
+git clone https://github.com/ggerganov/whisper.cpp
+cd whisper.cpp
+cmake -B build -G "Visual Studio 17 2022" -A x64
+cmake --build build --config Release
+```
+
+The executable will be at `build\bin\Release\whisper-cli.exe`
+
+**Verify Installation:**
+```batch
+whisper-cli --help
+```
+
+### 4. Whisper Model Setup (Required)
+
+Download a Whisper model in GGML format. Place in your project models directory.
+
+**Model Selection Guide:**
+
+| Model | Size | Speed | Quality | Best For |
+|-------|------|-------|---------|----------|
+| ggml-tiny.en.bin | 75 MB | Fastest | Good | Quick drafts, testing |
+| ggml-base.en.bin | 142 MB | Fast | Better | General use (recommended) |
+| ggml-small.en.bin | 466 MB | Medium | High | Production transcription |
+| ggml-medium.en.bin | 1.5 GB | Slow | Higher | Difficult audio |
+| ggml-large-v3.bin | 3.1 GB | Slowest | Best | Maximum accuracy |
+
+**Note:** Models ending in `.en` are English-only and faster. Models without `.en` support 99 languages.
+
+**Download from Hugging Face:**
+- [ggml-base.en.bin](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin) (recommended)
+- [All models](https://huggingface.co/ggerganov/whisper.cpp/tree/main)
+
+```batch
+mkdir models
+curl -L -o models/ggml-base.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin
+```
+
+### 5. AI Enhancement Setup (Optional)
+
+AI features (transcript cleanup, translation, smart chapter titles) require API keys.
+
+**Cloud Providers:**
+
+| Provider | Environment Variable | Get API Key |
+|----------|---------------------|-------------|
+| Anthropic (Claude) | ANTHROPIC_API_KEY | [console.anthropic.com](https://console.anthropic.com/) |
+| Google (Gemini) | GEMINI_API_KEY | [aistudio.google.com](https://aistudio.google.com/) |
+| xAI (Grok) | XAI_API_KEY | [x.ai](https://x.ai/) |
+| OpenAI | OPENAI_API_KEY | [platform.openai.com](https://platform.openai.com/) |
+
+**Windows (set environment variable):**
+```batch
+set ANTHROPIC_API_KEY=sk-ant-your-key-here
+```
+
+**Local AI with Ollama:**
+
+1. Install Ollama from [ollama.com](https://ollama.com/)
+2. Pull a model:
+```batch
+ollama pull llama3.2
+```
+3. Ollama runs locally at http://localhost:11434
+4. No API key needed - simple_speech auto-detects Ollama
+
+### 6. Add to Your ECF
+
 ```xml
 <library name="simple_speech" location="$SIMPLE_EIFFEL/simple_speech/simple_speech.ecf"/>
 ```
 
-3. Download Whisper model (any ggml format):
-```
-models/ggml-base.en.bin
-```
+## Quick Start with SPEECH_QUICK
 
-Requires: FFmpeg in PATH for video support
-
-## Capabilities by Phase
-
-### Phase 0-1: Foundation
-- Whisper.cpp integration (deterministic STT)
-- Fully local execution
-
-### Phase 2: Format Export
 ```eiffel
-exporter.export_srt (segments, "output.srt")
-exporter.export_vtt (segments, "output.vtt")
-exporter.export_json (segments, "output.json")
+local
+    quick: SPEECH_QUICK
+do
+    create quick.make_with_model ("models/ggml-base.en.bin")
+    if quick.is_ready and quick.process_video ("input.mp4", "output.mp4") then
+        print ("Success: " + quick.segment_count.out + " segments, "
+               + quick.chapter_count.out + " chapters%N")
+    end
+end
 ```
 
-### Phase 3: Video Pipeline
+**Fluent API:**
 ```eiffel
-pipeline.transcribe ("video.mp4")  -- Automatic audio extraction
+local
+    quick: SPEECH_QUICK
+    l_dummy: like quick
+do
+    create quick.make_with_model ("models/ggml-base.en.bin")
+    l_dummy := quick.transcribe ("video.mp4")
+                    .set_sensitivity (0.6)
+                    .detect_chapters
+                    .export_vtt ("captions.vtt")
+                    .embed_to ("output.mp4")
+end
 ```
-
-### Phase 4: AI Enhancement
-```eiffel
-enhancer.enhance_transcript (segments)    -- Clean up with AI
-enhancer.translate_to ("es", segments)    -- Translate
-```
-
-### Phase 5: Batch Processing
-```eiffel
-create batch.make (pipeline)
-batch.add_file ("video1.mp4")
-batch.add_file ("video2.mp4")
-batch.set_format ("vtt")
-batch.run  -- Memory-conscious processing
-```
-
-### Phase 6: Smart Chaptering
-```eiffel
-create detector.make
-detector.set_sensitivity (0.6)
-chapters := detector.detect_transitions (segments)
--- Detected via 45+ phrase patterns + temporal analysis
-```
-
-### Phase 7: Metadata Embedding
-```eiffel
-embedder.embed_captions (video, segments, output)
-embedder.embed_chapters (video, chapters, output)
-embedder.embed_all (video, segments, chapters, output)
-```
-
-### Phase 8: Real-Time Streaming (Coming)
-- Non-blocking streaming transcription
-- Live chapter formation
-- SCOOP-safe concurrency
 
 ## API Classes
 
 | Class | Purpose |
 |-------|---------|
-| `SPEECH_QUICK` | **Facade** - One-stop API for common workflows |
-| `SPEECH_PIPELINE` | End-to-end video/audio transcription |
-| `SPEECH_EXPORTER` | SRT, VTT, JSON, TXT export |
-| `SPEECH_TRANSITION_DETECTOR` | Algorithmic chapter detection |
-| `SPEECH_CHAPTER` | Chapter data model with localization |
-| `SPEECH_AI_CHAPTER_ENHANCER` | AI-powered chapter titles |
-| `SPEECH_VIDEO_EMBEDDER` | Container metadata embedding |
-| `SPEECH_BATCH_PROCESSOR` | Multi-file processing |
-| `SPEECH_MEMORY_MONITOR` | Resource management |
-
-## Demo Applications
-
-```
-demo_export    -- Format export demonstration
-demo_pipeline  -- Video transcription pipeline
-demo_batch     -- Batch processing with progress
-demo_chapters  -- Chapter detection demo
-demo_embed     -- Metadata embedding demo
-```
-
-Run demos:
-```batch
-cd simple_speech
-ec -batch -config simple_speech.ecf -target demo_embed -c_compile
-./EIFGENs/demo_embed/W_code/simple_speech.exe
-```
+| SPEECH_QUICK | Facade - One-stop API for common workflows |
+| SPEECH_PIPELINE | End-to-end video/audio transcription |
+| SPEECH_EXPORTER | SRT, VTT, JSON, TXT export |
+| SPEECH_TRANSITION_DETECTOR | Algorithmic chapter detection |
+| SPEECH_VIDEO_EMBEDDER | Container metadata embedding |
+| SPEECH_BATCH_PROCESSOR | Multi-file processing |
 
 ## Dependencies
 
@@ -198,4 +225,4 @@ MIT License - See LICENSE file
 
 ---
 
-Part of the **Simple Eiffel** ecosystem - modern, contract-driven Eiffel libraries.
+Part of the **Simple Eiffel** ecosystem.

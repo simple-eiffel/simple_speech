@@ -52,7 +52,7 @@ feature -- Status
 			Result := not internal_chapters.is_empty
 		end
 
-	last_error: detachable STRING
+	last_error: detachable STRING_32
 			-- Last error message if any.
 
 feature -- Access
@@ -125,7 +125,7 @@ feature -- Fluent API
 		do
 			last_error := Void
 			current_input := a_file
-			if attached pipeline.transcribe (a_file) as segs then
+			if attached pipeline.process_video (a_file) as segs then
 				internal_segments.wipe_out
 				across segs as seg loop
 					internal_segments.extend (seg)
@@ -157,12 +157,21 @@ feature -- Fluent API
 
 	set_sensitivity (a_value: REAL_64): like Current
 			-- Set chapter detection sensitivity (0.0 to 1.0).
+			-- Maps: 0.0-0.33 -> low, 0.34-0.66 -> medium, 0.67-1.0 -> high
 		require
 			valid_range: a_value >= 0.0 and a_value <= 1.0
 		local
 			l_dummy: like detector
+			l_level: INTEGER
 		do
-			l_dummy := detector.set_sensitivity (a_value)
+			if a_value <= 0.33 then
+				l_level := 1  -- low
+			elseif a_value <= 0.66 then
+				l_level := 2  -- medium
+			else
+				l_level := 3  -- high
+			end
+			l_dummy := detector.set_sensitivity (l_level)
 			Result := Current
 		ensure
 			result_is_current: Result = Current
@@ -189,9 +198,10 @@ feature -- Export
 			has_segments: has_segments
 		local
 			exporter: VTT_EXPORTER
+			l_dummy: BOOLEAN
 		do
 			create exporter.make
-			exporter.export_to_file (internal_segments, a_path)
+			l_dummy := exporter.from_segments (internal_segments).export_to_file (a_path)
 			Result := Current
 		ensure
 			result_is_current: Result = Current
@@ -203,9 +213,10 @@ feature -- Export
 			has_segments: has_segments
 		local
 			exporter: SRT_EXPORTER
+			l_dummy: BOOLEAN
 		do
 			create exporter.make
-			exporter.export_to_file (internal_segments, a_path)
+			l_dummy := exporter.from_segments (internal_segments).export_to_file (a_path)
 			Result := Current
 		ensure
 			result_is_current: Result = Current
@@ -217,9 +228,10 @@ feature -- Export
 			has_segments: has_segments
 		local
 			exporter: JSON_EXPORTER
+			l_dummy: BOOLEAN
 		do
 			create exporter.make
-			exporter.export_to_file (internal_segments, a_path)
+			l_dummy := exporter.from_segments (internal_segments).export_to_file (a_path)
 			Result := Current
 		ensure
 			result_is_current: Result = Current
@@ -231,10 +243,10 @@ feature -- Export
 			has_chapters: has_chapters
 		local
 			result_obj: SPEECH_CHAPTERED_RESULT
+			l_dummy: BOOLEAN
 		do
-			create result_obj.make (internal_segments)
-			result_obj.set_chapters (internal_chapters)
-			result_obj.export_chapters_json (a_path)
+			create result_obj.make (internal_segments, internal_chapters)
+			l_dummy := result_obj.export_chapters_json (a_path)
 			Result := Current
 		ensure
 			result_is_current: Result = Current
@@ -246,10 +258,10 @@ feature -- Export
 			has_chapters: has_chapters
 		local
 			result_obj: SPEECH_CHAPTERED_RESULT
+			l_dummy: BOOLEAN
 		do
-			create result_obj.make (internal_segments)
-			result_obj.set_chapters (internal_chapters)
-			result_obj.export_chapters_vtt (a_path)
+			create result_obj.make (internal_segments, internal_chapters)
+			l_dummy := result_obj.export_chapters_vtt (a_path)
 			Result := Current
 		ensure
 			result_is_current: Result = Current
@@ -261,12 +273,12 @@ feature -- Embedding
 			-- Embed captions and chapters into video.
 		require
 			has_segments: has_segments
-			has_input: current_input /= Void
+			has_input: has_segments
 		local
 			embedder: SPEECH_VIDEO_EMBEDDER
 		do
 			last_error := Void
-			create embedder.make (pipeline)
+			create embedder.make (pipeline.ffmpeg_cli)
 			if attached current_input as inp then
 				if has_chapters then
 					if not embedder.embed_all (inp, internal_segments, internal_chapters, a_output) then
@@ -287,12 +299,12 @@ feature -- Embedding
 			-- Embed only captions (no chapters).
 		require
 			has_segments: has_segments
-			has_input: current_input /= Void
+			has_input: has_segments
 		local
 			embedder: SPEECH_VIDEO_EMBEDDER
 		do
 			last_error := Void
-			create embedder.make (pipeline)
+			create embedder.make (pipeline.ffmpeg_cli)
 			if attached current_input as inp then
 				if not embedder.embed_captions (inp, internal_segments, a_output) then
 					last_error := embedder.last_error
@@ -307,12 +319,12 @@ feature -- Embedding
 			-- Embed only chapters (no captions).
 		require
 			has_chapters: has_chapters
-			has_input: current_input /= Void
+			has_input: has_segments
 		local
 			embedder: SPEECH_VIDEO_EMBEDDER
 		do
 			last_error := Void
-			create embedder.make (pipeline)
+			create embedder.make (pipeline.ffmpeg_cli)
 			if attached current_input as inp then
 				if not embedder.embed_chapters (inp, internal_chapters, a_output) then
 					last_error := embedder.last_error

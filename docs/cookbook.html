@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>simple_speech Cookbook</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <h1>simple_speech Cookbook</h1>
+        <p class="tagline">Common Recipes for Everyday Tasks</p>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="#basic">Basic</a></li>
+            <li><a href="#chapters">Chapters</a></li>
+            <li><a href="#embedding">Embedding</a></li>
+            <li><a href="#batch">Batch</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section id="basic">
+            <h2>Basic Recipes</h2>
+
+            <h3>Recipe 1: Transcribe Video to VTT Subtitles</h3>
+<pre><code>local
+    quick: SPEECH_QUICK
+    l_dummy: like quick
+do
+    create quick.make_with_model ("models/ggml-base.en.bin")
+    l_dummy := quick.transcribe ("lecture.mp4").export_vtt ("lecture.vtt")
+end</code></pre>
+
+            <h3>Recipe 2: Export to Multiple Formats</h3>
+<pre><code>local
+    quick: SPEECH_QUICK
+    l_dummy: like quick
+do
+    create quick.make_with_model ("models/ggml-base.en.bin")
+    l_dummy := quick.transcribe ("meeting.mp4")
+    l_dummy := quick.export_vtt ("meeting.vtt")
+                    .export_srt ("meeting.srt")
+                    .export_json ("meeting.json")
+end</code></pre>
+
+            <h3>Recipe 3: Check Transcription Status</h3>
+<pre><code>local
+    quick: SPEECH_QUICK
+    l_dummy: like quick
+do
+    create quick.make_with_model ("models/ggml-base.en.bin")
+    l_dummy := quick.transcribe ("video.mp4")
+    
+    if quick.has_segments then
+        print ("Transcribed " + quick.segment_count.out + " segments%N")
+    else
+        print ("Error: " + quick.last_error + "%N")
+    end
+end</code></pre>
+        </section>
+
+        <section id="chapters">
+            <h2>Chapter Detection</h2>
+
+            <h3>Recipe 4: Auto-Chapter a Long Video</h3>
+<pre><code>local
+    quick: SPEECH_QUICK
+    l_dummy: like quick
+do
+    create quick.make_with_model ("models/ggml-base.en.bin")
+    l_dummy := quick.transcribe ("course.mp4")
+                    .set_sensitivity (0.5)              -- Lower = more chapters
+                    .set_min_chapter_duration (60.0)    -- Min 1 minute
+                    .detect_chapters
+                    .export_chapters_json ("chapters.json")
+end</code></pre>
+
+            <h3>Recipe 5: Fine-Tune Chapter Detection</h3>
+<pre><code>local
+    quick: SPEECH_QUICK
+    l_dummy: like quick
+do
+    create quick.make_with_model ("models/ggml-base.en.bin")
+    l_dummy := quick.transcribe ("podcast.mp4")
+    
+    -- High sensitivity = fewer, more distinct chapters
+    l_dummy := quick.set_sensitivity (0.8)
+                    .set_min_chapter_duration (120.0)  -- Min 2 minutes
+                    .detect_chapters
+    
+    print ("Detected " + quick.chapter_count.out + " chapters%N")
+end</code></pre>
+
+            <h3>Recipe 6: Export Chapters as VTT</h3>
+<pre><code>local
+    quick: SPEECH_QUICK
+    l_dummy: like quick
+do
+    create quick.make_with_model ("models/ggml-base.en.bin")
+    l_dummy := quick.transcribe ("documentary.mp4")
+                    .detect_chapters
+                    .export_chapters_vtt ("chapters.vtt")
+end</code></pre>
+        </section>
+
+        <section id="embedding">
+            <h2>Video Embedding</h2>
+
+            <h3>Recipe 7: Create Self-Describing Video</h3>
+<pre><code>local
+    quick: SPEECH_QUICK
+do
+    create quick.make_with_model ("models/ggml-base.en.bin")
+    if quick.process_video ("raw.mp4", "finished.mp4") then
+        -- finished.mp4 now has embedded captions + chapters
+        print ("Embedded " + quick.chapter_count.out + " chapters%N")
+    end
+end</code></pre>
+
+            <h3>Recipe 8: Embed Only Captions (No Chapters)</h3>
+<pre><code>local
+    quick: SPEECH_QUICK
+    l_dummy: like quick
+do
+    create quick.make_with_model ("models/ggml-base.en.bin")
+    l_dummy := quick.transcribe ("input.mp4")
+                    .embed_captions_only ("output.mp4")
+end</code></pre>
+
+            <h3>Recipe 9: Embed Only Chapters (No Captions)</h3>
+<pre><code>local
+    quick: SPEECH_QUICK
+    l_dummy: like quick
+do
+    create quick.make_with_model ("models/ggml-base.en.bin")
+    l_dummy := quick.transcribe ("input.mp4")
+                    .detect_chapters
+                    .embed_chapters_only ("output.mp4")
+end</code></pre>
+
+            <h3>Recipe 10: Full Fluent Workflow</h3>
+<pre><code>local
+    quick: SPEECH_QUICK
+    l_dummy: like quick
+do
+    create quick.make_with_model ("models/ggml-base.en.bin")
+    l_dummy := quick.transcribe ("video.mp4")
+                    .set_sensitivity (0.6)
+                    .detect_chapters
+                    .export_vtt ("captions.vtt")
+                    .export_chapters_json ("chapters.json")
+                    .embed_to ("output.mp4")
+end</code></pre>
+        </section>
+
+        <section id="batch">
+            <h2>Batch Processing</h2>
+
+            <h3>Recipe 11: Process Multiple Files</h3>
+<pre><code>local
+    batch: SPEECH_BATCH_PROCESSOR
+    pipeline: SPEECH_PIPELINE
+do
+    create pipeline.make ("models/ggml-base.en.bin")
+    create batch.make (pipeline)
+    batch.add_file ("video1.mp4")
+    batch.add_file ("video2.mp4")
+    batch.add_file ("video3.mp4")
+    batch.set_format ("vtt")
+    batch.run   -- Memory-conscious sequential processing
+end</code></pre>
+
+            <h3>Recipe 12: Use Pipeline for Full Control</h3>
+<pre><code>local
+    pipeline: SPEECH_PIPELINE
+    detector: SPEECH_TRANSITION_DETECTOR
+    result: SPEECH_CHAPTERED_RESULT
+do
+    create pipeline.make ("models/ggml-base.en.bin")
+    create detector.make
+    
+    if pipeline.is_ready then
+        create result.make (pipeline.transcribe ("video.mp4"))
+        result.set_detector (detector)
+        result.detect_chapters
+        result.export_full_vtt ("captions.vtt")
+        result.export_chapters_json ("chapters.json")
+    end
+end</code></pre>
+
+            <h3>Recipe 13: Error Handling</h3>
+<pre><code>local
+    quick: SPEECH_QUICK
+    l_dummy: like quick
+do
+    create quick.make_with_model ("models/ggml-base.en.bin")
+    
+    if not quick.is_ready then
+        print ("Error: Model not loaded%N")
+    else
+        l_dummy := quick.transcribe ("video.mp4")
+        if not quick.has_segments then
+            print ("Transcription failed: " + quick.last_error + "%N")
+        else
+            l_dummy := quick.detect_chapters.embed_to ("output.mp4")
+            if quick.last_error /= Void then
+                print ("Embedding failed: " + quick.last_error + "%N")
+            end
+        end
+    end
+end</code></pre>
+        </section>
+    </main>
+
+    <footer>
+        <p><a href="index.html">Back to Documentation</a></p>
+        <p><strong>simple_speech</strong> - <a href="https://github.com/simple-eiffel">Simple Eiffel</a> ecosystem</p>
+    </footer>
+</body>
+</html>

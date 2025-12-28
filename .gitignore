@@ -20,3 +20,9 @@ models/
 *.pdb
 *.ilk
 *.exp
+*.dll
+*.exe
+
+# Whisper binaries (build from source or download from releases)
+whisper-cli.exe
+lib/*.dll

@@ -53,6 +53,12 @@ feature -- Access
 	video_info: detachable FFMPEG_MEDIA_INFO
 			-- Info about last processed video.
 
+	ffmpeg_cli: FFMPEG_CLI
+			-- Access to FFmpeg CLI for embedding operations.
+		do
+			Result := ffmpeg
+		end
+
 feature -- Status
 
 	is_ready: BOOLEAN
