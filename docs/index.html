@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>simple_speech - Local-First Media Intelligence Pipeline</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <img src="images/logo.png" alt="simple_* logo" class="logo">
+        </div>
+        <h1>simple_speech</h1>
+        <p class="tagline">Local-First Media Intelligence Pipeline</p>
+        <div class="badges">
+            <span class="badge badge-version">v1.0.0</span>
+            <span class="badge badge-license">MIT</span>
+            <span class="badge badge-rfc">Phase 0-7</span>
+        </div>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="#overview">Overview</a></li>
+            <li><a href="#quick-start">Quick Start</a></li>
+            <li><a href="#phases">Capabilities</a></li>
+            <li><a href="#embedding">Embedding</a></li>
+            <li><a href="#api-reference">API Reference</a></li>
+            <li><a href="https://github.com/simple-eiffel/simple_speech">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section id="overview">
+            <h2>Overview</h2>
+            <p>
+                <strong>simple_speech</strong> is a local-first speech-to-text and media-structuring engine
+                that automatically turns raw audio and video into navigable, captioned, chaptered media.
+            </p>
+            <p>
+                Most speech-to-text tools stop at text. We deliver <em>structure</em>:
+            </p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Capability</th>
+                        <th>Market Status</th>
+                        <th>simple_speech</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Transcription</td>
+                        <td>Commodity</td>
+                        <td>Yes</td>
+                    </tr>
+                    <tr>
+                        <td>Captions (SRT/VTT)</td>
+                        <td>Expected</td>
+                        <td>Yes</td>
+                    </tr>
+                    <tr>
+                        <td>Auto-Chapters</td>
+                        <td>Rare</td>
+                        <td>Yes</td>
+                    </tr>
+                    <tr>
+                        <td>Embedded Metadata</td>
+                        <td>Extremely Rare</td>
+                        <td>Yes</td>
+                    </tr>
+                    <tr>
+                        <td>Offline Determinism</td>
+                        <td>High-Trust Differentiator</td>
+                        <td>Yes</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p>
+                <em>We do not just transcribe media. We make it self-describing - automatically.</em>
+            </p>
+            <p>
+                Part of the <a href="https://github.com/simple-eiffel">Simple Eiffel</a> ecosystem.
+            </p>
+        </section>
+
+        <section id="principles">
+            <h2>Core Principles</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>Local-First, Deterministic</h4>
+                    <p>No cloud, no uploads, reproducible results every time.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Structure Over Text</h4>
+                    <p>Chapters, navigation, and semantic organization.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Media-Native Outputs</h4>
+                    <p>Embedded captions and chapters in containers.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Algorithmic-First, AI-Optional</h4>
+                    <p>45+ transition patterns; AI enhancement available.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="quick-start">
+            <h2>Quick Start</h2>
+
+            <h3>Installation</h3>
+            <ol>
+                <li>Set environment variable:
+<pre><code>set SIMPLE_EIFFEL=D:\prod</code></pre>
+                </li>
+                <li>Add to your ECF file:
+<pre><code>&lt;library name="simple_speech" location="$SIMPLE_EIFFEL/simple_speech/simple_speech.ecf"/&gt;</code></pre>
+                </li>
+                <li>Download a Whisper model (any ggml format):
+<pre><code>models/ggml-base.en.bin</code></pre>
+                </li>
+            </ol>
+            <p>Requires: FFmpeg in PATH for video support.</p>
+
+            <h3>Basic Usage</h3>
+<pre><code><span class="keyword">local</span>
+    pipeline: <span class="type">SPEECH_PIPELINE</span>
+    result: <span class="type">SPEECH_CHAPTERED_RESULT</span>
+<span class="keyword">do</span>
+    <span class="comment">-- Transcribe video with auto-chaptering</span>
+    <span class="keyword">create</span> pipeline.make (<span class="string">"models/ggml-base.en.bin"</span>)
+
+    <span class="keyword">if</span> pipeline.is_ready <span class="keyword">then</span>
+        <span class="keyword">create</span> result.make (pipeline.transcribe (<span class="string">"video.mp4"</span>))
+        result.detect_chapters
+
+        <span class="comment">-- Export chapters</span>
+        result.export_chapters_json (<span class="string">"chapters.json"</span>)
+        result.export_full_vtt (<span class="string">"captions.vtt"</span>)
+    <span class="keyword">end</span>
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="phases">
+            <h2>Capabilities by Phase</h2>
+
+            <h3>Phase 0-1: Foundation</h3>
+            <ul>
+                <li>Whisper.cpp integration (deterministic STT)</li>
+                <li>Fully local execution</li>
+            </ul>
+
+            <h3>Phase 2: Format Export</h3>
+<pre><code>exporter.export_srt (segments, <span class="string">"output.srt"</span>)
+exporter.export_vtt (segments, <span class="string">"output.vtt"</span>)
+exporter.export_json (segments, <span class="string">"output.json"</span>)</code></pre>
+
+            <h3>Phase 3: Video Pipeline</h3>
+<pre><code>pipeline.transcribe (<span class="string">"video.mp4"</span>)  <span class="comment">-- Automatic audio extraction</span></code></pre>
+
+            <h3>Phase 4: AI Enhancement</h3>
+<pre><code>enhancer.enhance_transcript (segments)    <span class="comment">-- Clean up with AI</span>
+enhancer.translate_to (<span class="string">"es"</span>, segments)    <span class="comment">-- Translate</span></code></pre>
+
+            <h3>Phase 5: Batch Processing</h3>
+<pre><code><span class="keyword">create</span> batch.make (pipeline)
+batch.add_file (<span class="string">"video1.mp4"</span>)
+batch.add_file (<span class="string">"video2.mp4"</span>)
+batch.set_format (<span class="string">"vtt"</span>)
+batch.run  <span class="comment">-- Memory-conscious processing</span></code></pre>
+
+            <h3>Phase 6: Smart Chaptering</h3>
+<pre><code><span class="keyword">create</span> detector.make
+detector.set_sensitivity (0.6)
+chapters := detector.detect_transitions (segments)
+<span class="comment">-- Detected via 45+ phrase patterns + temporal analysis</span></code></pre>
+
+            <h3>Phase 7: Metadata Embedding</h3>
+<pre><code>embedder.embed_captions (video, segments, output)
+embedder.embed_chapters (video, chapters, output)
+embedder.embed_all (video, segments, chapters, output)</code></pre>
+
+            <h3>Phase 8: Real-Time Streaming (Coming)</h3>
+            <ul>
+                <li>Non-blocking streaming transcription</li>
+                <li>Live chapter formation</li>
+                <li>SCOOP-safe concurrency</li>
+            </ul>
+        </section>
+
+        <section id="embedding">
+            <h2>Embedded Media (Phase 7)</h2>
+            <p>
+                Create self-describing video files with embedded captions and navigable chapters:
+            </p>
+<pre><code><span class="keyword">local</span>
+    embedder: <span class="type">SPEECH_VIDEO_EMBEDDER</span>
+<span class="keyword">do</span>
+    <span class="keyword">create</span> embedder.make (pipeline)
+
+    <span class="comment">-- Embed captions + chapters into video container</span>
+    <span class="keyword">if</span> embedder.embed_all (<span class="string">"input.mp4"</span>, segments, chapters, <span class="string">"output.mp4"</span>) <span class="keyword">then</span>
+        print (<span class="string">"Video now contains embedded subtitles and chapter markers%N"</span>)
+    <span class="keyword">end</span>
+<span class="keyword">end</span></code></pre>
+            <p>The output video plays in VLC, YouTube, or any modern player with:</p>
+            <ul>
+                <li>Toggleable soft subtitles</li>
+                <li>Navigable chapter markers</li>
+                <li>No sidecar files needed</li>
+            </ul>
+        </section>
+
+        <section id="api-reference">
+            <h2>API Reference</h2>
+
+            <h3>SPEECH_PIPELINE (Facade)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Method</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>make (model_path)</code></td>
+                        <td>Create pipeline with Whisper model</td>
+                    </tr>
+                    <tr>
+                        <td><code>transcribe (file)</code></td>
+                        <td>Transcribe audio/video to segments</td>
+                    </tr>
+                    <tr>
+                        <td><code>is_ready</code></td>
+                        <td>Check if pipeline is initialized</td>
+                    </tr>
+                    <tr>
+                        <td><code>ffmpeg</code></td>
+                        <td>Access underlying FFmpeg CLI</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>SPEECH_TRANSITION_DETECTOR</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Method</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>detect_transitions (segments)</code></td>
+                        <td>Detect chapter boundaries</td>
+                    </tr>
+                    <tr>
+                        <td><code>set_sensitivity (0.0-1.0)</code></td>
+                        <td>Adjust detection threshold</td>
+                    </tr>
+                    <tr>
+                        <td><code>set_min_chapter_duration (secs)</code></td>
+                        <td>Minimum chapter length</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>SPEECH_VIDEO_EMBEDDER</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Method</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>embed_captions (in, segments, out)</code></td>
+                        <td>Embed soft subtitles</td>
+                    </tr>
+                    <tr>
+                        <td><code>embed_chapters (in, chapters, out)</code></td>
+                        <td>Embed chapter markers</td>
+                    </tr>
+                    <tr>
+                        <td><code>embed_all (in, segments, chapters, out)</code></td>
+                        <td>Embed both</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Key Classes</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Class</th>
+                        <th>Purpose</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>SPEECH_EXPORTER</code></td>
+                        <td>SRT, VTT, JSON, TXT export</td>
+                    </tr>
+                    <tr>
+                        <td><code>SPEECH_CHAPTER</code></td>
+                        <td>Chapter data with localization</td>
+                    </tr>
+                    <tr>
+                        <td><code>SPEECH_AI_CHAPTER_ENHANCER</code></td>
+                        <td>AI-powered chapter titles</td>
+                    </tr>
+                    <tr>
+                        <td><code>SPEECH_BATCH_PROCESSOR</code></td>
+                        <td>Multi-file processing</td>
+                    </tr>
+                    <tr>
+                        <td><code>SPEECH_MEMORY_MONITOR</code></td>
+                        <td>Resource management</td>
+                    </tr>
+                    <tr>
+                        <td><code>SPEECH_METADATA_GENERATOR</code></td>
+                        <td>FFMETADATA format generation</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section id="demos">
+            <h2>Demo Applications</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Demo</th>
+                        <th>Purpose</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>demo_export</code></td>
+                        <td>Format export demonstration</td>
+                    </tr>
+                    <tr>
+                        <td><code>demo_pipeline</code></td>
+                        <td>Video transcription pipeline</td>
+                    </tr>
+                    <tr>
+                        <td><code>demo_batch</code></td>
+                        <td>Batch processing with progress</td>
+                    </tr>
+                    <tr>
+                        <td><code>demo_chapters</code></td>
+                        <td>Chapter detection demo</td>
+                    </tr>
+                    <tr>
+                        <td><code>demo_embed</code></td>
+                        <td>Metadata embedding demo</td>
+                    </tr>
+                </tbody>
+            </table>
+<pre><code># Run a demo
+cd simple_speech
+ec -batch -config simple_speech.ecf -target demo_embed -c_compile
+./EIFGENs/demo_embed/W_code/simple_speech.exe</code></pre>
+        </section>
+    </main>
+
+    <footer>
+        <p>
+            <strong>simple_speech</strong> is part of the
+            <a href="https://github.com/simple-eiffel">Simple Eiffel</a> ecosystem.
+        </p>
+        <p>
+            <a href="https://github.com/simple-eiffel/simple_speech">GitHub</a> |
+            <a href="https://github.com/simple-eiffel/simple_speech/blob/main/LICENSE">MIT License</a>
+        </p>
+    </footer>
+</body>
+</html>

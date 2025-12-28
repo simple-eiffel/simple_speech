@@ -1,88 +1,199 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/simple-eiffel/claude_eiffel_op_docs/main/artwork/LOGO.png" alt="simple_ library logo" width="400">
+</p>
+
 # simple_speech
 
-Speech-to-text library for Eiffel, wrapping [whisper.cpp](https://github.com/ggml-org/whisper.cpp).
+**[Documentation](https://simple-eiffel.github.io/simple_speech/)** | **[GitHub](https://github.com/simple-eiffel/simple_speech)**
 
-## Features
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Eiffel](https://img.shields.io/badge/Eiffel-25.02-blue.svg)](https://www.eiffel.org/)
+[![Design by Contract](https://img.shields.io/badge/DbC-enforced-orange.svg)]()
 
-- **Local/Offline** - No cloud API needed, runs entirely on your machine
-- **99+ Languages** - Supports all languages from OpenAI Whisper
-- **Timestamps** - Word and segment-level timing
-- **Translation** - Translate to English from any language
-- **Export Formats** - VTT, SRT, JSON, TXT
-- **Loose Coupling** - SPEECH_ENGINE abstraction allows swapping backends
+**Local-first speech-to-text and media-structuring engine** that automatically turns raw audio and video into navigable, captioned, chaptered media.
+
+Part of the [Simple Eiffel](https://github.com/simple-eiffel) ecosystem.
+
+## What Makes This Different
+
+Most speech-to-text tools stop at text. **simple_speech** delivers *structure*:
+
+| Capability | Market Status | simple_speech |
+|------------|---------------|---------------|
+| Transcription | Commodity | Yes |
+| Captions (SRT/VTT) | Expected | Yes |
+| Auto-Chapters | Rare | Yes |
+| Embedded metadata | Extremely rare | Yes |
+| Offline determinism | High-trust differentiator | Yes |
+
+> *We don't just transcribe media. We make it self-describing - automatically.*
 
 ## Status
 
-| Phase | Description | Status |
-|-------|-------------|--------|
-| Phase 0 | Foundation Setup | ✅ Complete |
-| Phase 1 | Core Transcription | ✅ Complete |
-| Phase 2 | Export Formats | ✅ Complete |
-| Phase 3 | Video Pipeline | ⏳ Pending |
-| Phase 4 | AI Enhancement | ⏳ Pending |
-| Phase 5 | Batch Processing | ⏳ Pending |
-| Phase 6 | Real-Time Streaming | ⏳ Pending |
+**Production** - Phases 0-7 complete, Phase 8 (real-time streaming) planned
+
+## Core Principles
+
+1. **Local-first, deterministic** - No cloud, no uploads, reproducible results
+2. **Structure over text** - Chapters, navigation, semantic organization
+3. **Media-native outputs** - Embedded captions and chapters in containers
+4. **Algorithmic-first, AI-optional** - 45+ transition patterns, AI enhancement available
 
 ## Quick Start
 
 ```eiffel
--- Transcribe audio file
-create speech.make ("models/ggml-base.en.bin")
-segments := speech.transcribe_file ("audio.wav")
-across segments as seg loop
-    print (seg.start_time_formatted + " " + seg.text + "%N")
+local
+    pipeline: SPEECH_PIPELINE
+    result: SPEECH_CHAPTERED_RESULT
+do
+    -- Transcribe video with auto-chaptering
+    create pipeline.make ("models/ggml-base.en.bin")
+    
+    if pipeline.is_ready then
+        create result.make (pipeline.transcribe ("video.mp4"))
+        result.detect_chapters
+        
+        -- Export chapters
+        result.export_chapters_json ("chapters.json")
+        result.export_full_vtt ("captions.vtt")
+    end
 end
-
--- Export to subtitles
-create exporter.make (segments)
-exporter.export_vtt ("captions.vtt")
-        .export_srt ("captions.srt")
-        .export_json ("captions.json")
 ```
 
-## Requirements
+## Embedded Media (Phase 7)
 
-- EiffelStudio 25.02+
-- whisper.lib (build from whisper.cpp v1.8.2)
-- Model file (see Models section)
+Create self-describing video files with embedded captions and navigable chapters:
 
-## Models
-
-| Model | Size | Speed | Use Case |
-|-------|------|-------|----------|
-| ggml-base.en.bin | 142 MB | Fast | English only |
-| ggml-base.bin | 142 MB | Fast | 99+ languages |
-| ggml-tiny.en.bin | 39 MB | Fastest | Quick tests |
-| ggml-small.en.bin | 466 MB | Medium | Higher accuracy |
-
-Download from [HuggingFace](https://huggingface.co/ggerganov/whisper.cpp).
-
-## Architecture
-
-```
-SIMPLE_SPEECH (facade)
-       |
-       v
-SPEECH_ENGINE* (deferred)
-       |
-       +-- WHISPER_ENGINE (whisper.cpp)
-       +-- [future: VOSK_ENGINE, etc.]
+```eiffel
+local
+    embedder: SPEECH_VIDEO_EMBEDDER
+do
+    create embedder.make (pipeline)
+    
+    -- Embed captions + chapters into video container
+    if embedder.embed_all ("input.mp4", segments, chapters, "output.mp4") then
+        print ("Video now contains embedded subtitles and chapter markers%N")
+    end
+end
 ```
 
-All whisper.cpp coupling isolated to `src/engines/whisper_engine.e`.
+The output video plays in VLC, YouTube, or any modern player with:
+- Toggleable soft subtitles
+- Navigable chapter markers
+- No sidecar files needed
 
-## Test Coverage
+## Installation
 
-- 14 unit tests (segments, speech, export)
-- 9 sample tests (various audio types)
-- Tested with: mono/stereo, 8kHz-48kHz, noisy audio, 4 languages
+1. Set environment variable:
+```batch
+set SIMPLE_EIFFEL=D:\prod
+```
+
+2. Add to your ECF:
+```xml
+<library name="simple_speech" location="$SIMPLE_EIFFEL/simple_speech/simple_speech.ecf"/>
+```
+
+3. Download Whisper model (any ggml format):
+```
+models/ggml-base.en.bin
+```
+
+Requires: FFmpeg in PATH for video support
+
+## Capabilities by Phase
+
+### Phase 0-1: Foundation
+- Whisper.cpp integration (deterministic STT)
+- Fully local execution
+
+### Phase 2: Format Export
+```eiffel
+exporter.export_srt (segments, "output.srt")
+exporter.export_vtt (segments, "output.vtt")
+exporter.export_json (segments, "output.json")
+```
+
+### Phase 3: Video Pipeline
+```eiffel
+pipeline.transcribe ("video.mp4")  -- Automatic audio extraction
+```
+
+### Phase 4: AI Enhancement
+```eiffel
+enhancer.enhance_transcript (segments)    -- Clean up with AI
+enhancer.translate_to ("es", segments)    -- Translate
+```
+
+### Phase 5: Batch Processing
+```eiffel
+create batch.make (pipeline)
+batch.add_file ("video1.mp4")
+batch.add_file ("video2.mp4")
+batch.set_format ("vtt")
+batch.run  -- Memory-conscious processing
+```
+
+### Phase 6: Smart Chaptering
+```eiffel
+create detector.make
+detector.set_sensitivity (0.6)
+chapters := detector.detect_transitions (segments)
+-- Detected via 45+ phrase patterns + temporal analysis
+```
+
+### Phase 7: Metadata Embedding
+```eiffel
+embedder.embed_captions (video, segments, output)
+embedder.embed_chapters (video, chapters, output)
+embedder.embed_all (video, segments, chapters, output)
+```
+
+### Phase 8: Real-Time Streaming (Coming)
+- Non-blocking streaming transcription
+- Live chapter formation
+- SCOOP-safe concurrency
+
+## API Classes
+
+| Class | Purpose |
+|-------|---------|
+| `SPEECH_PIPELINE` | End-to-end video/audio transcription |
+| `SPEECH_EXPORTER` | SRT, VTT, JSON, TXT export |
+| `SPEECH_TRANSITION_DETECTOR` | Algorithmic chapter detection |
+| `SPEECH_CHAPTER` | Chapter data model with localization |
+| `SPEECH_AI_CHAPTER_ENHANCER` | AI-powered chapter titles |
+| `SPEECH_VIDEO_EMBEDDER` | Container metadata embedding |
+| `SPEECH_BATCH_PROCESSOR` | Multi-file processing |
+| `SPEECH_MEMORY_MONITOR` | Resource management |
+
+## Demo Applications
+
+```
+demo_export    -- Format export demonstration
+demo_pipeline  -- Video transcription pipeline
+demo_batch     -- Batch processing with progress
+demo_chapters  -- Chapter detection demo
+demo_embed     -- Metadata embedding demo
+```
+
+Run demos:
+```batch
+cd simple_speech
+ec -batch -config simple_speech.ecf -target demo_embed -c_compile
+./EIFGENs/demo_embed/W_code/simple_speech.exe
+```
+
+## Dependencies
+
+- simple_ffmpeg (video processing)
+- simple_ai_client (optional AI features)
+- ISE base, time
 
 ## License
 
 MIT License - See LICENSE file
 
-## Credits
+---
 
-- [whisper.cpp](https://github.com/ggml-org/whisper.cpp) by Georgi Gerganov
-- [OpenAI Whisper](https://github.com/openai/whisper)
-- Test audio from [Blender Foundation](https://www.blender.org/about/projects/), [LibriVox](https://librivox.org/)
+Part of the **Simple Eiffel** ecosystem - modern, contract-driven Eiffel libraries.
