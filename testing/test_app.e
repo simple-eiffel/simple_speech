@@ -19,6 +19,7 @@ feature {NONE} -- Initialization
 
 			run_segment_tests
 			run_speech_tests
+			run_export_tests
 
 			print ("%N========================%N")
 			print ("Results: " + passed.out + " passed, " + failed.out + " failed%N")
@@ -56,6 +57,21 @@ feature {NONE} -- Test Runners
 			run_test (agent tests.test_fluent_config, "test_fluent_config")
 			run_test (agent tests.test_wav_reader, "test_wav_reader")
 			run_test (agent tests.test_real_transcription, "test_real_transcription")
+		end
+
+	run_export_tests
+			-- Run export format tests.
+		local
+			tests: TEST_EXPORT
+		do
+			print ("%N--- EXPORT Tests ---%N")
+			create tests
+			run_test (agent tests.test_vtt_export, "test_vtt_export")
+			run_test (agent tests.test_srt_export, "test_srt_export")
+			run_test (agent tests.test_json_export, "test_json_export")
+			run_test (agent tests.test_txt_export, "test_txt_export")
+			run_test (agent tests.test_unified_exporter, "test_unified_exporter")
+			run_test (agent tests.test_file_export, "test_file_export")
 		end
 
 feature {NONE} -- Test Infrastructure

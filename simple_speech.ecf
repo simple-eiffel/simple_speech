@@ -38,19 +38,61 @@
 				<platform value="windows"/>
 			</condition>
 		</external_object>
+		<external_linker_flag value="psapi.lib">
+			<condition>
+				<platform value="windows"/>
+			</condition>
+		</external_linker_flag>
 		<library name="base" location="$ISE_LIBRARY/library/base/base.ecf"/>
 		<library name="time" location="$ISE_LIBRARY/library/time/time.ecf"/>
-		<cluster name="src" location=".\src\" recursive="true"/>
+		<library name="simple_ffmpeg" location="D:/prod/simple_ffmpeg/simple_ffmpeg.ecf"/>
+		<library name="simple_ai_client" location="D:/prod/simple_ai_client/simple_ai_client.ecf"/>
+		<cluster name="src" location="./src/" recursive="true"/>
 	</target>
 	<target name="simple_speech_tests" extends="simple_speech">
 		<root class="TEST_APP" feature="make"/>
 		<setting name="console_application" value="true"/>
 		<library name="testing" location="$ISE_LIBRARY/library/testing/testing.ecf"/>
-		<cluster name="tests" location=".\testing\"/>
+		<cluster name="tests" location="./testing/"/>
 	</target>
 	<target name="demo" extends="simple_speech">
 		<root class="DEMO_TRANSCRIBE" feature="make"/>
 		<setting name="console_application" value="true"/>
-		<cluster name="demo_app" location=".\testing\"/>
+		<cluster name="demo_app" location="./testing/"/>
+	</target>
+	<target name="demo_export" extends="simple_speech">
+		<root class="DEMO_EXPORT" feature="make"/>
+		<setting name="console_application" value="true"/>
+		<cluster name="demo_app" location="./testing/"/>
+	</target>
+	<target name="demo_samples" extends="simple_speech">
+		<root class="DEMO_SAMPLES" feature="make"/>
+		<setting name="console_application" value="true"/>
+		<cluster name="demo_app" location="./testing/"/>
+	</target>
+	<target name="demo_pipeline" extends="simple_speech">
+		<root class="DEMO_PIPELINE" feature="make"/>
+		<setting name="console_application" value="true"/>
+		<cluster name="demo_app" location="./testing/"/>
+	</target>
+	<target name="demo_ai_enhance" extends="simple_speech">
+		<root class="DEMO_AI_ENHANCE" feature="make"/>
+		<setting name="console_application" value="true"/>
+		<cluster name="demo_app" location="./testing/"/>
+	</target>
+	<target name="demo_batch" extends="simple_speech">
+		<root class="DEMO_BATCH" feature="make"/>
+		<setting name="console_application" value="true"/>
+		<cluster name="demo_app" location="./testing/"/>
+	</target>
+	<target name="demo_chapters" extends="simple_speech">
+		<root class="DEMO_CHAPTERS" feature="make"/>
+		<setting name="console_application" value="true"/>
+		<cluster name="demo_app" location="./testing/"/>
+	</target>
+	<target name="demo_embed" extends="simple_speech">
+		<root class="DEMO_EMBED" feature="make"/>
+		<setting name="console_application" value="true"/>
+		<cluster name="demo_app" location="./testing/"/>
 	</target>
 </system>

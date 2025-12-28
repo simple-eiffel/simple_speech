@@ -1,35 +1,22 @@
-# Eiffel build artifacts
+# EiffelStudio generated files
 EIFGENs/
-Documentation/
 
-# Models (large files - user downloads)
+# Test outputs
+testing/output/
+
+# Sample media files (too large for git)
+testing/samples/blender_movies/
+testing/samples/librispeech/
+testing/samples/accents/
+testing/samples/multilingual/
+testing/samples/noisy/
+testing/samples/mono/
+testing/samples/stereo/
+
+# Models
 models/
 
-# Libraries (compiled binaries)
-lib/
-
-# Compiled files
-*.melted
-*.o
-*.obj
-*.exe
-*.dll
-*.so
-*.dylib
-*.lib
-
-# Backup files
-*.swp
-*.bak
-*~
-
-# IDE files
-.vscode/
-.idea/
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
+# Windows specific
+*.pdb
+*.ilk
+*.exp
