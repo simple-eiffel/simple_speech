@@ -90,13 +90,11 @@ feature -- One-Liner Operations
 			ready: is_ready
 			input_not_empty: not a_input.is_empty
 			output_not_empty: not a_output.is_empty
-		local
-			l_dummy: like Current
 		do
-			l_dummy := transcribe (a_input)
+			transcribe (a_input)
 			if has_segments then
-				l_dummy := detect_chapters
-				l_dummy := embed_to (a_output)
+				detect_chapters
+				embed_to (a_output)
 				Result := last_error = Void
 			end
 		end
@@ -105,19 +103,26 @@ feature -- One-Liner Operations
 			-- Transcribe and export to VTT.
 		require
 			ready: is_ready
-		local
-			l_dummy: like Current
 		do
-			l_dummy := transcribe (a_input)
+			transcribe (a_input)
 			if has_segments then
-				l_dummy := export_vtt (a_output_vtt)
+				export_vtt (a_output_vtt)
 				Result := True
 			end
 		end
 
 feature -- Fluent API
 
-	transcribe (a_file: STRING): like Current
+	then_transcribe (a_file: STRING): like Current
+			-- Fluent: transcribe and return Current.
+		do
+			transcribe (a_file)
+			Result := Current
+		ensure
+			result_is_current: Result = Current
+		end
+
+	transcribe (a_file: STRING)
 			-- Transcribe audio or video file.
 		require
 			ready: is_ready
@@ -133,12 +138,18 @@ feature -- Fluent API
 			else
 				last_error := pipeline.last_error
 			end
+		end
+
+	then_detect_chapters: like Current
+			-- Fluent: detect chapters and return Current.
+		do
+			detect_chapters
 			Result := Current
 		ensure
 			result_is_current: Result = Current
 		end
 
-	detect_chapters: like Current
+	detect_chapters
 			-- Detect chapter transitions in transcribed segments.
 		require
 			has_segments: has_segments
@@ -150,18 +161,16 @@ feature -- Fluent API
 					internal_chapters.extend (ch)
 				end
 			end
-			Result := Current
-		ensure
-			result_is_current: Result = Current
 		end
 
-	set_sensitivity (a_value: REAL_64): like Current
+feature -- Configuration Commands
+
+	set_sensitivity (a_value: REAL_64)
 			-- Set chapter detection sensitivity (0.0 to 1.0).
 			-- Maps: 0.0-0.33 -> low, 0.34-0.66 -> medium, 0.67-1.0 -> high
 		require
 			valid_range: a_value >= 0.0 and a_value <= 1.0
 		local
-			l_dummy: like detector
 			l_level: INTEGER
 		do
 			if a_value <= 0.33 then
@@ -171,165 +180,257 @@ feature -- Fluent API
 			else
 				l_level := 3  -- high
 			end
-			l_dummy := detector.set_sensitivity (l_level)
-			Result := Current
-		ensure
-			result_is_current: Result = Current
+			detector.set_sensitivity (l_level)
 		end
 
-	set_min_chapter_duration (a_seconds: REAL_64): like Current
+	set_min_chapter_duration (a_seconds: REAL_64)
 			-- Set minimum chapter duration in seconds.
 		require
 			positive: a_seconds > 0.0
-		local
-			l_dummy: like detector
 		do
-			l_dummy := detector.set_min_chapter_duration (a_seconds)
+			detector.set_min_chapter_duration (a_seconds)
+		end
+
+feature -- Configuration Fluent
+
+	with_sensitivity (a_value: REAL_64): like Current
+			-- Fluent: set sensitivity and return Current.
+		require
+			valid_range: a_value >= 0.0 and a_value <= 1.0
+		do
+			set_sensitivity (a_value)
 			Result := Current
 		ensure
 			result_is_current: Result = Current
 		end
 
-feature -- Export
+	with_min_chapter_duration (a_seconds: REAL_64): like Current
+			-- Fluent: set min chapter duration and return Current.
+		require
+			positive: a_seconds > 0.0
+		do
+			set_min_chapter_duration (a_seconds)
+			Result := Current
+		ensure
+			result_is_current: Result = Current
+		end
 
-	export_vtt (a_path: STRING): like Current
+feature -- Export Commands
+
+	export_vtt (a_path: STRING)
 			-- Export segments to VTT format.
 		require
 			has_segments: has_segments
 		local
-			exporter: VTT_EXPORTER
-			l_dummy: BOOLEAN
+			l_exporter: VTT_EXPORTER
 		do
-			create exporter.make
-			l_dummy := exporter.from_segments (internal_segments).export_to_file (a_path)
-			Result := Current
-		ensure
-			result_is_current: Result = Current
+			create l_exporter.make
+			l_exporter.set_segments (internal_segments)
+			if not l_exporter.export_to_file (a_path) then
+				last_error := l_exporter.last_error
+			end
 		end
 
-	export_srt (a_path: STRING): like Current
+	export_srt (a_path: STRING)
 			-- Export segments to SRT format.
 		require
 			has_segments: has_segments
 		local
-			exporter: SRT_EXPORTER
-			l_dummy: BOOLEAN
+			l_exporter: SRT_EXPORTER
 		do
-			create exporter.make
-			l_dummy := exporter.from_segments (internal_segments).export_to_file (a_path)
-			Result := Current
-		ensure
-			result_is_current: Result = Current
+			create l_exporter.make
+			l_exporter.set_segments (internal_segments)
+			if not l_exporter.export_to_file (a_path) then
+				last_error := l_exporter.last_error
+			end
 		end
 
-	export_json (a_path: STRING): like Current
+	export_json (a_path: STRING)
 			-- Export segments to JSON format.
 		require
 			has_segments: has_segments
 		local
-			exporter: JSON_EXPORTER
-			l_dummy: BOOLEAN
+			l_exporter: JSON_EXPORTER
 		do
-			create exporter.make
-			l_dummy := exporter.from_segments (internal_segments).export_to_file (a_path)
-			Result := Current
-		ensure
-			result_is_current: Result = Current
+			create l_exporter.make
+			l_exporter.set_segments (internal_segments)
+			if not l_exporter.export_to_file (a_path) then
+				last_error := l_exporter.last_error
+			end
 		end
 
-	export_chapters_json (a_path: STRING): like Current
+	export_chapters_json (a_path: STRING)
 			-- Export chapters to JSON format.
 		require
 			has_chapters: has_chapters
 		local
-			result_obj: SPEECH_CHAPTERED_RESULT
-			l_dummy: BOOLEAN
+			l_result_obj: SPEECH_CHAPTERED_RESULT
 		do
-			create result_obj.make (internal_segments, internal_chapters)
-			l_dummy := result_obj.export_chapters_json (a_path)
-			Result := Current
-		ensure
-			result_is_current: Result = Current
+			create l_result_obj.make (internal_segments, internal_chapters)
+			if not l_result_obj.export_chapters_json (a_path) then
+				last_error := {STRING_32} "Failed to export chapters JSON"
+			end
 		end
 
-	export_chapters_vtt (a_path: STRING): like Current
+	export_chapters_vtt (a_path: STRING)
 			-- Export chapters to VTT format.
 		require
 			has_chapters: has_chapters
 		local
-			result_obj: SPEECH_CHAPTERED_RESULT
-			l_dummy: BOOLEAN
+			l_result_obj: SPEECH_CHAPTERED_RESULT
 		do
-			create result_obj.make (internal_segments, internal_chapters)
-			l_dummy := result_obj.export_chapters_vtt (a_path)
+			create l_result_obj.make (internal_segments, internal_chapters)
+			if not l_result_obj.export_chapters_vtt (a_path) then
+				last_error := {STRING_32} "Failed to export chapters VTT"
+			end
+		end
+
+feature -- Export Fluent
+
+	then_export_vtt (a_path: STRING): like Current
+			-- Fluent: export to VTT and return Current.
+		require
+			has_segments: has_segments
+		do
+			export_vtt (a_path)
 			Result := Current
 		ensure
 			result_is_current: Result = Current
 		end
 
-feature -- Embedding
+	then_export_srt (a_path: STRING): like Current
+			-- Fluent: export to SRT and return Current.
+		require
+			has_segments: has_segments
+		do
+			export_srt (a_path)
+			Result := Current
+		ensure
+			result_is_current: Result = Current
+		end
 
-	embed_to (a_output: STRING): like Current
+	then_export_json (a_path: STRING): like Current
+			-- Fluent: export to JSON and return Current.
+		require
+			has_segments: has_segments
+		do
+			export_json (a_path)
+			Result := Current
+		ensure
+			result_is_current: Result = Current
+		end
+
+	then_export_chapters_json (a_path: STRING): like Current
+			-- Fluent: export chapters to JSON and return Current.
+		require
+			has_chapters: has_chapters
+		do
+			export_chapters_json (a_path)
+			Result := Current
+		ensure
+			result_is_current: Result = Current
+		end
+
+	then_export_chapters_vtt (a_path: STRING): like Current
+			-- Fluent: export chapters to VTT and return Current.
+		require
+			has_chapters: has_chapters
+		do
+			export_chapters_vtt (a_path)
+			Result := Current
+		ensure
+			result_is_current: Result = Current
+		end
+
+feature -- Embedding Fluent
+
+	then_embed_to (a_output: STRING): like Current
+			-- Fluent: embed to output and return Current.
+		do
+			embed_to (a_output)
+			Result := Current
+		ensure
+			result_is_current: Result = Current
+		end
+
+feature -- Embedding Commands
+
+	embed_to (a_output: STRING)
 			-- Embed captions and chapters into video.
 		require
 			has_segments: has_segments
 			has_input: has_segments
 		local
-			embedder: SPEECH_VIDEO_EMBEDDER
+			l_embedder: SPEECH_VIDEO_EMBEDDER
 		do
 			last_error := Void
-			create embedder.make (pipeline.ffmpeg_cli)
+			create l_embedder.make (pipeline.ffmpeg_cli)
 			if attached current_input as inp then
 				if has_chapters then
-					if not embedder.embed_all (inp, internal_segments, internal_chapters, a_output) then
-						last_error := embedder.last_error
+					if not l_embedder.embed_all (inp, internal_segments, internal_chapters, a_output) then
+						last_error := l_embedder.last_error
 					end
 				else
-					if not embedder.embed_captions (inp, internal_segments, a_output) then
-						last_error := embedder.last_error
+					if not l_embedder.embed_captions (inp, internal_segments, a_output) then
+						last_error := l_embedder.last_error
 					end
 				end
 			end
-			Result := Current
-		ensure
-			result_is_current: Result = Current
 		end
 
-	embed_captions_only (a_output: STRING): like Current
+	embed_captions_only (a_output: STRING)
 			-- Embed only captions (no chapters).
 		require
 			has_segments: has_segments
 			has_input: has_segments
 		local
-			embedder: SPEECH_VIDEO_EMBEDDER
+			l_embedder: SPEECH_VIDEO_EMBEDDER
 		do
 			last_error := Void
-			create embedder.make (pipeline.ffmpeg_cli)
+			create l_embedder.make (pipeline.ffmpeg_cli)
 			if attached current_input as inp then
-				if not embedder.embed_captions (inp, internal_segments, a_output) then
-					last_error := embedder.last_error
+				if not l_embedder.embed_captions (inp, internal_segments, a_output) then
+					last_error := l_embedder.last_error
 				end
 			end
-			Result := Current
-		ensure
-			result_is_current: Result = Current
 		end
 
-	embed_chapters_only (a_output: STRING): like Current
+	embed_chapters_only (a_output: STRING)
 			-- Embed only chapters (no captions).
 		require
 			has_chapters: has_chapters
 			has_input: has_segments
 		local
-			embedder: SPEECH_VIDEO_EMBEDDER
+			l_embedder: SPEECH_VIDEO_EMBEDDER
 		do
 			last_error := Void
-			create embedder.make (pipeline.ffmpeg_cli)
+			create l_embedder.make (pipeline.ffmpeg_cli)
 			if attached current_input as inp then
-				if not embedder.embed_chapters (inp, internal_chapters, a_output) then
-					last_error := embedder.last_error
+				if not l_embedder.embed_chapters (inp, internal_chapters, a_output) then
+					last_error := l_embedder.last_error
 				end
 			end
+		end
+
+	then_embed_captions_only (a_output: STRING): like Current
+			-- Fluent: embed captions only and return Current.
+		require
+			has_segments: has_segments
+			has_input: has_segments
+		do
+			embed_captions_only (a_output)
+			Result := Current
+		ensure
+			result_is_current: Result = Current
+		end
+
+	then_embed_chapters_only (a_output: STRING): like Current
+			-- Fluent: embed chapters only and return Current.
+		require
+			has_chapters: has_chapters
+			has_input: has_segments
+		do
+			embed_chapters_only (a_output)
 			Result := Current
 		ensure
 			result_is_current: Result = Current

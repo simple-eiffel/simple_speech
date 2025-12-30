@@ -1,7 +1,7 @@
 note
 	description: "[
 		JSON_EXPORTER - Export speech segments to JSON format.
-		
+
 		Output format:
 		{
 			"segments": [
@@ -15,6 +15,10 @@ note
 			"duration": 30.5,
 			"segment_count": 21
 		}
+
+		CQS Pattern:
+		- Command: set_segments
+		- Fluent: with_segments, from_segments (alias)
 	]"
 	author: "Larry Rix"
 
@@ -40,12 +44,23 @@ feature -- Access
 	last_error: detachable STRING_32
 			-- Last error message.
 
-feature -- Configuration
+feature -- Configuration Commands
 
-	from_segments (a_segments: like segments): like Current
+	set_segments (a_segments: like segments)
 			-- Set segments to export.
 		do
 			segments := a_segments
+		ensure
+			segments_set: segments = a_segments
+		end
+
+feature -- Configuration Fluent
+
+	from_segments,
+	with_segments (a_segments: like segments): like Current
+			-- Fluent: set segments and return Current.
+		do
+			set_segments (a_segments)
 			Result := Current
 		ensure
 			segments_set: segments = a_segments
@@ -78,15 +93,15 @@ feature -- Operations
 			l_duration: REAL_64
 		do
 			create Result.make (2048)
-			
+
 			-- Calculate total duration
 			if segments.count > 0 then
 				l_duration := segments[segments.count].end_time
 			end
-			
+
 			Result.append ("{%N")
 			Result.append ("  %"segments%": [%N")
-			
+
 			from i := 1 until i > segments.count loop
 				Result.append (format_segment (segments[i]))
 				if i < segments.count then
@@ -96,7 +111,7 @@ feature -- Operations
 				end
 				i := i + 1
 			end
-			
+
 			Result.append ("  ],%N")
 			Result.append ("  %"duration%": " + l_duration.out + ",%N")
 			Result.append ("  %"segment_count%": " + segments.count.out + "%N")
@@ -112,7 +127,7 @@ feature {NONE} -- Implementation
 		do
 			create Result.make (256)
 			l_text := escape_json (a_segment.text.to_string_8)
-			
+
 			Result.append ("    {%N")
 			Result.append ("      %"start%": " + a_segment.start_time.out + ",%N")
 			Result.append ("      %"end%": " + a_segment.end_time.out + ",%N")

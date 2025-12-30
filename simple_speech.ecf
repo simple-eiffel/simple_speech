@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
-<system xmlns="http://www.eiffel.com/developers/xml/configuration-1-22-0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.eiffel.com/developers/xml/configuration-1-22-0 http://www.eiffel.com/developers/xml/configuration-1-22-0.xsd" name="simple_speech" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567890" library_target="simple_speech">
+<system xmlns="http://www.eiffel.com/developers/xml/configuration-1-23-0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.eiffel.com/developers/xml/configuration-1-23-0 http://www.eiffel.com/developers/xml/configuration-1-23-0.xsd" name="simple_speech" uuid="A1B2C3D4-E5F6-7890-ABCD-EF1234567890" library_target="simple_speech">
 	<description>Speech-to-text library wrapping whisper.cpp with ecosystem integration</description>
 	<target name="simple_speech">
 		<root all_classes="true"/>
@@ -43,57 +43,73 @@
 				<platform value="windows"/>
 			</condition>
 		</external_linker_flag>
-		<library name="base" location="$ISE_LIBRARY/library/base/base.ecf"/>
-		<library name="time" location="$ISE_LIBRARY/library/time/time.ecf"/>
-		<library name="simple_ffmpeg" location="D:/prod/simple_ffmpeg/simple_ffmpeg.ecf"/>
-		<library name="simple_ai_client" location="D:/prod/simple_ai_client/simple_ai_client.ecf"/>
-		<cluster name="src" location="./src/" recursive="true"/>
+		<library name="base" location="$ISE_LIBRARY\library\base\base.ecf"/>
+		<library name="simple_ai_client" location="D:\prod\simple_ai_client\simple_ai_client.ecf"/>
+		<library name="simple_ffmpeg" location="D:\prod\simple_ffmpeg\simple_ffmpeg.ecf"/>
+		<library name="time" location="$ISE_LIBRARY\library\time\time.ecf"/>
+		<cluster name="src" location=".\src\" recursive="true"/>
 	</target>
 	<target name="simple_speech_tests" extends="simple_speech">
 		<root class="TEST_APP" feature="make"/>
 		<setting name="console_application" value="true"/>
-		<library name="testing" location="$ISE_LIBRARY/library/testing/testing.ecf"/>
-		<library name="simple_testing" location="$SIMPLE_EIFFEL/simple_testing/simple_testing.ecf"/>
-		<cluster name="tests" location="./testing/"/>
+		<library name="simple_testing" location="$SIMPLE_EIFFEL\simple_testing\simple_testing.ecf"/>
+		<library name="testing" location="$ISE_LIBRARY\library\testing\testing.ecf"/>
+		<cluster name="tests" location=".\testing\"/>
 	</target>
 	<target name="demo" extends="simple_speech">
 		<root class="DEMO_TRANSCRIBE" feature="make"/>
 		<setting name="console_application" value="true"/>
-		<cluster name="demo_app" location="./testing/"/>
+		<cluster name="demo_app" location=".\testing\"/>
 	</target>
 	<target name="demo_export" extends="simple_speech">
 		<root class="DEMO_EXPORT" feature="make"/>
 		<setting name="console_application" value="true"/>
-		<cluster name="demo_app" location="./testing/"/>
+		<cluster name="demo_app" location=".\testing\"/>
 	</target>
 	<target name="demo_samples" extends="simple_speech">
 		<root class="DEMO_SAMPLES" feature="make"/>
 		<setting name="console_application" value="true"/>
-		<cluster name="demo_app" location="./testing/"/>
+		<cluster name="demo_app" location=".\testing\"/>
 	</target>
 	<target name="demo_pipeline" extends="simple_speech">
 		<root class="DEMO_PIPELINE" feature="make"/>
 		<setting name="console_application" value="true"/>
-		<cluster name="demo_app" location="./testing/"/>
+		<cluster name="demo_app" location=".\testing\"/>
 	</target>
 	<target name="demo_ai_enhance" extends="simple_speech">
 		<root class="DEMO_AI_ENHANCE" feature="make"/>
 		<setting name="console_application" value="true"/>
-		<cluster name="demo_app" location="./testing/"/>
+		<cluster name="demo_app" location=".\testing\"/>
 	</target>
 	<target name="demo_batch" extends="simple_speech">
 		<root class="DEMO_BATCH" feature="make"/>
 		<setting name="console_application" value="true"/>
-		<cluster name="demo_app" location="./testing/"/>
+		<cluster name="demo_app" location=".\testing\"/>
 	</target>
 	<target name="demo_chapters" extends="simple_speech">
 		<root class="DEMO_CHAPTERS" feature="make"/>
 		<setting name="console_application" value="true"/>
-		<cluster name="demo_app" location="./testing/"/>
+		<cluster name="demo_app" location=".\testing\"/>
 	</target>
 	<target name="demo_embed" extends="simple_speech">
 		<root class="DEMO_EMBED" feature="make"/>
 		<setting name="console_application" value="true"/>
-		<cluster name="demo_app" location="./testing/"/>
+		<cluster name="demo_app" location=".\testing\"/>
+	</target>
+	<target name="speech_studio" extends="simple_speech">
+		<root class="SPEECH_STUDIO_APP" feature="make"/>
+		<setting name="console_application" value="false"/>
+		<setting name="executable_name" value="speech_studio"/>
+		<capability>
+			<concurrency support="scoop"/>
+		</capability>
+		<library name="simple_vision" location="$SIMPLE_EIFFEL\simple_vision\simple_vision.ecf"/>
+		<library name="vision2" location="$ISE_LIBRARY\library\vision2\vision2.ecf"/>
+		<cluster name="app" location=".\app\"/>
+	</target>
+	<target name="cli" extends="simple_speech">
+		<root class="SPEECH_CLI" feature="make"/>
+		<setting name="console_application" value="true"/>
+		<setting name="executable_name" value="speech_cli"/>
 	</target>
 </system>

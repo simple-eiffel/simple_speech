@@ -73,22 +73,40 @@ feature -- Status
 			Result := last_error /= Void
 		end
 
-feature -- Configuration
+feature -- Configuration Commands
 
-	set_language (a_lang: READABLE_STRING_GENERAL): like Current
+	set_language (a_lang: READABLE_STRING_GENERAL)
 			-- Set transcription language.
 		do
 			language := a_lang.to_string_32
+		ensure
+			language_set: attached language as l and then l.same_string_general (a_lang)
+		end
+
+	set_translate (a_translate: BOOLEAN)
+			-- Enable/disable translation to English.
+		do
+			translate := a_translate
+		ensure
+			translate_set: translate = a_translate
+		end
+
+feature -- Configuration Fluent
+
+	with_language (a_lang: READABLE_STRING_GENERAL): like Current
+			-- Fluent: set language and return Current.
+		do
+			set_language (a_lang)
 			Result := Current
 		ensure
 			language_set: attached language as l and then l.same_string_general (a_lang)
 			result_is_current: Result = Current
 		end
 
-	set_translate (a_translate: BOOLEAN): like Current
-			-- Enable/disable translation to English.
+	with_translate (a_translate: BOOLEAN): like Current
+			-- Fluent: set translate and return Current.
 		do
-			translate := a_translate
+			set_translate (a_translate)
 			Result := Current
 		ensure
 			translate_set: translate = a_translate
@@ -106,7 +124,6 @@ feature -- Processing
 		local
 			l_temp_wav: STRING_32
 			l_speech: SIMPLE_SPEECH
-			l_dummy: SIMPLE_SPEECH
 		do
 			clear_error
 			create segments.make (10)
@@ -127,10 +144,10 @@ feature -- Processing
 					if l_speech.is_valid then
 						-- Apply configuration
 						if attached language as lang then
-							l_dummy := l_speech.set_language (lang)
+							l_speech.set_language (lang)
 						end
 						if translate then
-							l_dummy := l_speech.set_translate (True)
+							l_speech.set_translate (True)
 						end
 
 						-- Transcribe
@@ -183,12 +200,11 @@ feature -- Export
 		require
 			has_segments: segments.count > 0
 		local
-			exporter: SPEECH_EXPORTER
-			l_dummy: SPEECH_EXPORTER
+			l_exporter: SPEECH_EXPORTER
 		do
-			create exporter.make (segments)
-			l_dummy := exporter.export_vtt (a_path)
-			Result := exporter.is_ok
+			create l_exporter.make (segments)
+			l_exporter.export_vtt (a_path)
+			Result := l_exporter.is_ok
 			if not Result then
 				set_error ("VTT export failed: " + a_path.to_string_32)
 			end
@@ -199,12 +215,11 @@ feature -- Export
 		require
 			has_segments: segments.count > 0
 		local
-			exporter: SPEECH_EXPORTER
-			l_dummy: SPEECH_EXPORTER
+			l_exporter: SPEECH_EXPORTER
 		do
-			create exporter.make (segments)
-			l_dummy := exporter.export_srt (a_path)
-			Result := exporter.is_ok
+			create l_exporter.make (segments)
+			l_exporter.export_srt (a_path)
+			Result := l_exporter.is_ok
 			if not Result then
 				set_error ("SRT export failed: " + a_path.to_string_32)
 			end
@@ -215,12 +230,11 @@ feature -- Export
 		require
 			has_segments: segments.count > 0
 		local
-			exporter: SPEECH_EXPORTER
-			l_dummy: SPEECH_EXPORTER
+			l_exporter: SPEECH_EXPORTER
 		do
-			create exporter.make (segments)
-			l_dummy := exporter.export_json (a_path)
-			Result := exporter.is_ok
+			create l_exporter.make (segments)
+			l_exporter.export_json (a_path)
+			Result := l_exporter.is_ok
 			if not Result then
 				set_error ("JSON export failed: " + a_path.to_string_32)
 			end
@@ -231,17 +245,16 @@ feature -- Export
 		require
 			has_segments: segments.count > 0
 		local
-			exporter: SPEECH_EXPORTER
-			l_dummy: SPEECH_EXPORTER
+			l_exporter: SPEECH_EXPORTER
 			l_base: STRING_32
 		do
 			l_base := a_base_path.to_string_32
-			create exporter.make (segments)
-			l_dummy := exporter.export_vtt (l_base + ".vtt")
-			                    .export_srt (l_base + ".srt")
-			                    .export_json (l_base + ".json")
-			                    .export_text (l_base + ".txt")
-			Result := exporter.is_ok
+			create l_exporter.make (segments)
+			l_exporter.export_vtt (l_base + ".vtt")
+			l_exporter.export_srt (l_base + ".srt")
+			l_exporter.export_json (l_base + ".json")
+			l_exporter.export_text (l_base + ".txt")
+			Result := l_exporter.is_ok
 		end
 
 feature {NONE} -- Implementation

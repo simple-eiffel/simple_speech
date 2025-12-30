@@ -18,7 +18,6 @@ feature {NONE} -- Initialization
 			chapters: ARRAYED_LIST [SPEECH_CHAPTER]
 			result_obj: SPEECH_CHAPTERED_RESULT
 			monitor: SPEECH_MEMORY_MONITOR
-			l_dummy_detector: SPEECH_TRANSITION_DETECTOR
 		do
 			print ("=== Simple Speech Chapter Detection Demo ===%N%N")
 			
@@ -52,8 +51,8 @@ feature {NONE} -- Initialization
 					-- Detect chapters
 					print ("4. Detecting chapter transitions...%N")
 					create detector.make
-					l_dummy_detector := detector.set_sensitivity (detector.Sensitivity_medium)
-					l_dummy_detector := detector.set_min_chapter_duration (60.0)
+					detector.set_sensitivity (detector.Sensitivity_medium)
+					detector.set_min_chapter_duration (60.0)
 					
 					chapters := detector.detect_transitions (segments)
 					print ("   Found " + chapters.count.out + " chapters.%N%N")

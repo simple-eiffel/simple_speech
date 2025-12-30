@@ -1,8 +1,12 @@
 note
 	description: "[
 		VTT_EXPORTER - Export speech segments to WebVTT format.
-		
+
 		WebVTT (Web Video Text Tracks) is a W3C standard for video captions.
+
+		CQS Pattern:
+		- Command: set_segments
+		- Fluent: with_segments, from_segments (alias)
 	]"
 	author: "Larry Rix"
 
@@ -28,12 +32,23 @@ feature -- Access
 	last_error: detachable STRING_32
 			-- Last error message.
 
-feature -- Configuration
+feature -- Configuration Commands
 
-	from_segments (a_segments: like segments): like Current
+	set_segments (a_segments: like segments)
 			-- Set segments to export.
 		do
 			segments := a_segments
+		ensure
+			segments_set: segments = a_segments
+		end
+
+feature -- Configuration Fluent
+
+	from_segments,
+	with_segments (a_segments: like segments): like Current
+			-- Fluent: set segments and return Current.
+		do
+			set_segments (a_segments)
 			Result := Current
 		ensure
 			segments_set: segments = a_segments
@@ -65,10 +80,10 @@ feature -- Operations
 			i: INTEGER
 		do
 			create Result.make (1024)
-			
+
 			-- WebVTT header
 			Result.append ("WEBVTT%N%N")
-			
+
 			-- Each segment as a cue
 			from i := 1 until i > segments.count loop
 				Result.append (format_cue (segments[i]))

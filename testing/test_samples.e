@@ -111,11 +111,10 @@ feature -- Tests
 		local
 			speech: SIMPLE_SPEECH
 			segments: ARRAYED_LIST [SPEECH_SEGMENT]
-			l_dummy: SIMPLE_SPEECH
 		do
 			create speech.make ("models/ggml-base.bin")
 			if speech.is_valid then
-				l_dummy := speech.set_language ("ja")
+				speech.set_language ("ja")
 				segments := speech.transcribe_file ("testing/samples/multilingual/japanese_sennin.wav")
 				assert ("japanese_transcribed", segments.count > 0)
 				speech.dispose
@@ -127,11 +126,10 @@ feature -- Tests
 		local
 			speech: SIMPLE_SPEECH
 			segments: ARRAYED_LIST [SPEECH_SEGMENT]
-			l_dummy: SIMPLE_SPEECH
 		do
 			create speech.make ("models/ggml-base.bin")
 			if speech.is_valid then
-				l_dummy := speech.set_language ("fr")
+				speech.set_language ("fr")
 				segments := speech.transcribe_file ("testing/samples/multilingual/french_lamain.wav")
 				assert ("french_transcribed", segments.count > 0)
 				speech.dispose
@@ -143,11 +141,10 @@ feature -- Tests
 		local
 			speech: SIMPLE_SPEECH
 			segments: ARRAYED_LIST [SPEECH_SEGMENT]
-			l_dummy: SIMPLE_SPEECH
 		do
 			create speech.make ("models/ggml-base.bin")
 			if speech.is_valid then
-				l_dummy := speech.set_language ("es")
+				speech.set_language ("es")
 				segments := speech.transcribe_file ("testing/samples/multilingual/spanish_elbuenhombre.wav")
 				assert ("spanish_transcribed", segments.count > 0)
 				speech.dispose
@@ -159,11 +156,10 @@ feature -- Tests
 		local
 			speech: SIMPLE_SPEECH
 			segments: ARRAYED_LIST [SPEECH_SEGMENT]
-			l_dummy: SIMPLE_SPEECH
 		do
 			create speech.make ("models/ggml-base.bin")
 			if speech.is_valid then
-				l_dummy := speech.set_language ("zh")
+				speech.set_language ("zh")
 				segments := speech.transcribe_file ("testing/samples/multilingual/chinese_shuidiaogetou.wav")
 				assert ("chinese_transcribed", segments.count > 0)
 				speech.dispose

@@ -221,19 +221,17 @@ feature {NONE} -- Implementation
 
 	do_export (a_exporter: SPEECH_EXPORTER; a_path: STRING_32)
 			-- Export using configured format.
-		local
-			l_dummy: SPEECH_EXPORTER
 		do
 			if format.same_string ("vtt") then
-				l_dummy := a_exporter.export_vtt (a_path)
+				a_exporter.export_vtt (a_path)
 			elseif format.same_string ("srt") then
-				l_dummy := a_exporter.export_srt (a_path)
+				a_exporter.export_srt (a_path)
 			elseif format.same_string ("json") then
-				l_dummy := a_exporter.export_json (a_path)
+				a_exporter.export_json (a_path)
 			elseif format.same_string ("txt") then
-				l_dummy := a_exporter.export_text (a_path)
+				a_exporter.export_text (a_path)
 			else
-				l_dummy := a_exporter.export_vtt (a_path)
+				a_exporter.export_vtt (a_path)
 			end
 		end
 

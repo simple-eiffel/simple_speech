@@ -62,9 +62,9 @@ feature -- Status
 			Result := last_error /= Void
 		end
 
-feature -- Configuration
+feature -- Configuration Commands
 
-	set_output_container (a_format: STRING_8): like Current
+	set_output_container (a_format: STRING_8)
 			-- Set output container format.
 		require
 			valid_format: a_format.same_string ("mp4") or
@@ -80,14 +80,36 @@ feature -- Configuration
 			elseif a_format.same_string ("webm") then
 				caption_format := "webvtt"
 			end
-			Result := Current
 		end
 
-	set_temp_dir (a_dir: STRING_8): like Current
+	set_temp_dir (a_dir: STRING_8)
 			-- Set temporary directory for intermediate files.
 		do
 			temp_dir := a_dir
+		end
+
+feature -- Configuration Fluent
+
+	with_output_container (a_format: STRING_8): like Current
+			-- Fluent: set output container and return Current.
+		require
+			valid_format: a_format.same_string ("mp4") or
+			              a_format.same_string ("mkv") or
+			              a_format.same_string ("webm")
+		do
+			set_output_container (a_format)
 			Result := Current
+		ensure
+			result_is_current: Result = Current
+		end
+
+	with_temp_dir (a_dir: STRING_8): like Current
+			-- Fluent: set temp directory and return Current.
+		do
+			set_temp_dir (a_dir)
+			Result := Current
+		ensure
+			result_is_current: Result = Current
 		end
 
 feature -- Embedding

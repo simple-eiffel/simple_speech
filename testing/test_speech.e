@@ -40,11 +40,11 @@ feature -- Tests
 			speech: SIMPLE_SPEECH
 			segments: ARRAYED_LIST [SPEECH_SEGMENT]
 			l_text: STRING_32
-			l_dummy: SIMPLE_SPEECH
 		do
 			create speech.make ("models/ggml-base.en.bin")
 			if speech.is_valid then
-				l_dummy := speech.set_language ("en").set_threads (4)
+				speech.set_language ("en")
+				speech.set_threads (4)
 				segments := speech.transcribe_file ("testing/samples/test_audio.wav")
 				
 				-- Combine all segment text

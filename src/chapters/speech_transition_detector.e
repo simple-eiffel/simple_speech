@@ -1,10 +1,14 @@
 note
 	description: "[
 		SPEECH_TRANSITION_DETECTOR - Algorithmic detection of topic/scene transitions.
-		
+
 		Analyzes speech segments to detect topic changes, scene transitions,
 		and structural boundaries WITHOUT using AI. Uses phrase patterns,
 		temporal gaps, and vocabulary shift analysis.
+
+		CQS Pattern:
+		- Commands: set_sensitivity, set_min_chapter_duration, set_min_gap_seconds
+		- Fluent: with_sensitivity, with_min_chapter_duration, with_min_gap_seconds
 	]"
 	author: "Larry Rix"
 
@@ -44,30 +48,71 @@ feature -- Constants
 	Weight_medium: REAL_64 = 0.6
 	Weight_low: REAL_64 = 0.3
 
-feature -- Configuration
+feature -- Configuration Commands
 
-	set_sensitivity (a_level: INTEGER): like Current
+	set_sensitivity (a_level: INTEGER)
+			-- Set detection sensitivity level.
 		require
 			valid_level: a_level >= Sensitivity_low and a_level <= Sensitivity_high
 		do
 			sensitivity := a_level
-			Result := Current
+		ensure
+			sensitivity_set: sensitivity = a_level
 		end
 
-	set_min_chapter_duration (a_seconds: REAL_64): like Current
+	set_min_chapter_duration (a_seconds: REAL_64)
+			-- Set minimum chapter duration in seconds.
 		require
 			positive: a_seconds > 0
 		do
 			min_chapter_duration := a_seconds
-			Result := Current
+		ensure
+			duration_set: min_chapter_duration = a_seconds
 		end
 
-	set_min_gap_seconds (a_seconds: REAL_64): like Current
+	set_min_gap_seconds (a_seconds: REAL_64)
+			-- Set minimum gap for temporal detection.
 		require
 			positive: a_seconds > 0
 		do
 			min_gap_seconds := a_seconds
+		ensure
+			gap_set: min_gap_seconds = a_seconds
+		end
+
+feature -- Configuration Fluent
+
+	with_sensitivity (a_level: INTEGER): like Current
+			-- Fluent: set sensitivity and return Current.
+		require
+			valid_level: a_level >= Sensitivity_low and a_level <= Sensitivity_high
+		do
+			set_sensitivity (a_level)
 			Result := Current
+		ensure
+			result_is_current: Result = Current
+		end
+
+	with_min_chapter_duration (a_seconds: REAL_64): like Current
+			-- Fluent: set minimum chapter duration and return Current.
+		require
+			positive: a_seconds > 0
+		do
+			set_min_chapter_duration (a_seconds)
+			Result := Current
+		ensure
+			result_is_current: Result = Current
+		end
+
+	with_min_gap_seconds (a_seconds: REAL_64): like Current
+			-- Fluent: set minimum gap and return Current.
+		require
+			positive: a_seconds > 0
+		do
+			set_min_gap_seconds (a_seconds)
+			Result := Current
+		ensure
+			result_is_current: Result = Current
 		end
 
 feature -- Detection
@@ -83,7 +128,7 @@ feature -- Detection
 			l_segment: SPEECH_SEGMENT
 		do
 			create Result.make (10)
-			
+
 			if segments.is_empty then
 				-- Nothing to do
 			else
@@ -91,33 +136,33 @@ feature -- Detection
 				l_chapter_start := segments.first.start_time
 				l_prev_end := segments.first.end_time
 				l_index := 0
-				
+
 				across segments as seg loop
 					l_index := l_index + 1
 					l_segment := seg
 					l_score := 0.0
 					l_type := "topic_shift"
-					
+
 					if l_segment.start_time - l_prev_end >= min_gap_seconds then
 						l_score := l_score + Weight_high
 						l_type := "temporal"
 					end
-					
+
 					l_score := l_score + score_text (l_segment.text)
-					
+
 					if l_score >= l_threshold and then
 					   l_segment.start_time - l_chapter_start >= min_chapter_duration then
 						Result.extend (create_chapter (l_chapter_start, l_prev_end, l_type, l_score))
 						l_chapter_start := l_segment.start_time
 					end
-					
+
 					l_prev_end := l_segment.end_time
 				end
-				
+
 				if not segments.is_empty then
 					Result.extend (create_chapter (l_chapter_start, l_prev_end, "topic_shift", 1.0))
 				end
-				
+
 				number_chapters (Result)
 			end
 		end
@@ -131,12 +176,12 @@ feature -- Detection
 			l_threshold := threshold_for_sensitivity
 			l_score := 0.0
 			l_type := "topic_shift"
-			
+
 			if segment.start_time - previous_end >= min_gap_seconds then
 				l_score := l_score + Weight_high
 				l_type := "temporal"
 			end
-			
+
 			l_score := l_score + score_text (segment.text)
 			Result := [l_score >= l_threshold, l_score, l_type]
 		end
@@ -205,7 +250,7 @@ feature {NONE} -- Implementation
 		do
 			l_lower := a_text.to_string_32.as_lower
 			l_best_weight := 0.0
-			
+
 			across transition_patterns as pat loop
 				if l_lower.has_substring (pat.pattern) then
 					if pat.weight > l_best_weight then
@@ -213,7 +258,7 @@ feature {NONE} -- Implementation
 					end
 				end
 			end
-			
+
 			Result := l_best_weight
 		end
 

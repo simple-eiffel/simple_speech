@@ -1,27 +1,29 @@
 note
 	description: "[
 		SPEECH_EXPORTER - Unified facade for exporting transcription results.
-		
+
 		Provides a single interface to export to multiple formats:
 		- VTT (WebVTT) for web video captions
 		- SRT (SubRip) for broad compatibility
 		- JSON for structured data
 		- TXT for plain text transcripts
-		
-		Example:
+
+		Example (commands):
 			create exporter.make (segments)
 			exporter.export_vtt ("output.vtt")
 			exporter.export_srt ("output.srt")
-			exporter.export_json ("output.json")
-			exporter.export_text ("output.txt")
-			
-		Fluent API:
+
+		Example (fluent chain):
 			create exporter.make (segments)
-			if exporter.export_vtt ("output.vtt")
-			        .export_srt ("output.srt")
+			if exporter.then_export_vtt ("output.vtt")
+			        .then_export_srt ("output.srt")
 			        .is_ok then
 			    print ("Export complete!")
 			end
+
+		CQS Pattern:
+		- Commands: set_segments, export_vtt, export_srt, export_json, export_text
+		- Fluent: with_segments, then_export_vtt, then_export_srt, etc.
 	]"
 	author: "Larry Rix"
 
@@ -72,87 +74,142 @@ feature -- Access
 			end
 		end
 
-feature -- Configuration
+feature -- Configuration Commands
 
-	from_segments (a_segments: like segments): like Current
+	set_segments (a_segments: like segments)
 			-- Set segments to export.
 		do
 			segments := a_segments
+		ensure
+			segments_set: segments = a_segments
+		end
+
+feature -- Configuration Fluent
+
+	with_segments (a_segments: like segments): like Current
+			-- Fluent: set segments and return Current.
+		do
+			set_segments (a_segments)
 			Result := Current
 		ensure
 			segments_set: segments = a_segments
 			result_is_current: Result = Current
 		end
 
-feature -- Export Operations
+	from_segments (a_segments: like segments): like Current
+			-- Alias for with_segments (legacy compatibility).
+		do
+			Result := with_segments (a_segments)
+		ensure
+			segments_set: segments = a_segments
+			result_is_current: Result = Current
+		end
 
-	export_vtt (a_path: READABLE_STRING_GENERAL): like Current
+feature -- Export Commands
+
+	export_vtt (a_path: READABLE_STRING_GENERAL)
 			-- Export to WebVTT format.
 		local
-			exporter: VTT_EXPORTER
+			l_exporter: VTT_EXPORTER
 		do
-			create exporter.make
-			if not exporter.from_segments (segments).export_to_file (a_path) then
+			create l_exporter.make
+			l_exporter.set_segments (segments)
+			if not l_exporter.export_to_file (a_path) then
 				add_error ("VTT export failed: " + a_path.to_string_32)
 			end
-			Result := Current
-		ensure
-			result_is_current: Result = Current
 		end
 
-	export_srt (a_path: READABLE_STRING_GENERAL): like Current
+	export_srt (a_path: READABLE_STRING_GENERAL)
 			-- Export to SubRip (SRT) format.
 		local
-			exporter: SRT_EXPORTER
+			l_exporter: SRT_EXPORTER
 		do
-			create exporter.make
-			if not exporter.from_segments (segments).export_to_file (a_path) then
+			create l_exporter.make
+			l_exporter.set_segments (segments)
+			if not l_exporter.export_to_file (a_path) then
 				add_error ("SRT export failed: " + a_path.to_string_32)
 			end
-			Result := Current
-		ensure
-			result_is_current: Result = Current
 		end
 
-	export_json (a_path: READABLE_STRING_GENERAL): like Current
+	export_json (a_path: READABLE_STRING_GENERAL)
 			-- Export to JSON format.
 		local
-			exporter: JSON_EXPORTER
+			l_exporter: JSON_EXPORTER
 		do
-			create exporter.make
-			if not exporter.from_segments (segments).export_to_file (a_path) then
+			create l_exporter.make
+			l_exporter.set_segments (segments)
+			if not l_exporter.export_to_file (a_path) then
 				add_error ("JSON export failed: " + a_path.to_string_32)
 			end
-			Result := Current
-		ensure
-			result_is_current: Result = Current
 		end
 
-	export_text (a_path: READABLE_STRING_GENERAL): like Current
+	export_text (a_path: READABLE_STRING_GENERAL)
 			-- Export to plain text format.
 		local
-			exporter: TXT_EXPORTER
+			l_exporter: TXT_EXPORTER
 		do
-			create exporter.make
-			if not exporter.from_segments (segments).export_to_file (a_path) then
+			create l_exporter.make
+			l_exporter.set_segments (segments)
+			if not l_exporter.export_to_file (a_path) then
 				add_error ("TXT export failed: " + a_path.to_string_32)
 			end
+		end
+
+	export_text_with_timestamps (a_path: READABLE_STRING_GENERAL)
+			-- Export to plain text format with timestamps.
+		local
+			l_exporter: TXT_EXPORTER
+		do
+			create l_exporter.make
+			l_exporter.set_segments (segments)
+			l_exporter.set_timestamps (True)
+			if not l_exporter.export_to_file (a_path) then
+				add_error ("TXT export failed: " + a_path.to_string_32)
+			end
+		end
+
+feature -- Export Fluent
+
+	then_export_vtt (a_path: READABLE_STRING_GENERAL): like Current
+			-- Fluent: export to VTT and return Current.
+		do
+			export_vtt (a_path)
 			Result := Current
 		ensure
 			result_is_current: Result = Current
 		end
 
-	export_text_with_timestamps (a_path: READABLE_STRING_GENERAL): like Current
-			-- Export to plain text format with timestamps.
-		local
-			exporter: TXT_EXPORTER
-			l_dummy: TXT_EXPORTER
+	then_export_srt (a_path: READABLE_STRING_GENERAL): like Current
+			-- Fluent: export to SRT and return Current.
 		do
-			create exporter.make
-			l_dummy := exporter.from_segments (segments).set_timestamps (True)
-			if not exporter.export_to_file (a_path) then
-				add_error ("TXT export failed: " + a_path.to_string_32)
-			end
+			export_srt (a_path)
+			Result := Current
+		ensure
+			result_is_current: Result = Current
+		end
+
+	then_export_json (a_path: READABLE_STRING_GENERAL): like Current
+			-- Fluent: export to JSON and return Current.
+		do
+			export_json (a_path)
+			Result := Current
+		ensure
+			result_is_current: Result = Current
+		end
+
+	then_export_text (a_path: READABLE_STRING_GENERAL): like Current
+			-- Fluent: export to text and return Current.
+		do
+			export_text (a_path)
+			Result := Current
+		ensure
+			result_is_current: Result = Current
+		end
+
+	then_export_text_with_timestamps (a_path: READABLE_STRING_GENERAL): like Current
+			-- Fluent: export to text with timestamps and return Current.
+		do
+			export_text_with_timestamps (a_path)
 			Result := Current
 		ensure
 			result_is_current: Result = Current
@@ -163,37 +220,41 @@ feature -- String Generation
 	to_vtt: STRING_8
 			-- Generate VTT content as string.
 		local
-			exporter: VTT_EXPORTER
+			l_exporter: VTT_EXPORTER
 		do
-			create exporter.make
-			Result := exporter.from_segments (segments).to_string
+			create l_exporter.make
+			l_exporter.set_segments (segments)
+			Result := l_exporter.to_string
 		end
 
 	to_srt: STRING_8
 			-- Generate SRT content as string.
 		local
-			exporter: SRT_EXPORTER
+			l_exporter: SRT_EXPORTER
 		do
-			create exporter.make
-			Result := exporter.from_segments (segments).to_string
+			create l_exporter.make
+			l_exporter.set_segments (segments)
+			Result := l_exporter.to_string
 		end
 
 	to_json: STRING_8
 			-- Generate JSON content as string.
 		local
-			exporter: JSON_EXPORTER
+			l_exporter: JSON_EXPORTER
 		do
-			create exporter.make
-			Result := exporter.from_segments (segments).to_string
+			create l_exporter.make
+			l_exporter.set_segments (segments)
+			Result := l_exporter.to_string
 		end
 
 	to_text: STRING_8
 			-- Generate plain text content as string.
 		local
-			exporter: TXT_EXPORTER
+			l_exporter: TXT_EXPORTER
 		do
-			create exporter.make
-			Result := exporter.from_segments (segments).to_string
+			create l_exporter.make
+			l_exporter.set_segments (segments)
+			Result := l_exporter.to_string
 		end
 
 feature {NONE} -- Implementation

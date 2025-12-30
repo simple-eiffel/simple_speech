@@ -14,7 +14,6 @@ feature {NONE} -- Initialization
 		local
 			speech: SIMPLE_SPEECH
 			segments: ARRAYED_LIST [SPEECH_SEGMENT]
-			l_dummy: SIMPLE_SPEECH
 			l_len: INTEGER
 		do
 			print ("=== Simple Speech Sample Testing ===%N%N")
@@ -83,7 +82,7 @@ feature {NONE} -- Initialization
 			create speech.make ("models/ggml-base.bin")
 			if speech.is_valid then
 				-- Chinese
-				l_dummy := speech.set_language ("zh")
+				speech.set_language ("zh")
 				segments := speech.transcribe_file ("testing/samples/multilingual/chinese_shuidiaogetou.wav")
 				report_result ("Chinese (short poem)", segments.count)
 				if segments.count > 0 then
@@ -92,7 +91,7 @@ feature {NONE} -- Initialization
 				end
 				
 				-- Spanish
-				l_dummy := speech.set_language ("es")
+				speech.set_language ("es")
 				segments := speech.transcribe_file ("testing/samples/multilingual/spanish_elbuenhombre.wav")
 				report_result ("Spanish", segments.count)
 				if segments.count > 0 then

@@ -17,7 +17,6 @@ feature {NONE} -- Initialization
 			embedder: SPEECH_VIDEO_EMBEDDER
 			segments: ARRAYED_LIST [SPEECH_SEGMENT]
 			chapters: ARRAYED_LIST [SPEECH_CHAPTER]
-			l_dummy: SPEECH_TRANSITION_DETECTOR
 			l_input, l_output: STRING_8
 			l_ffmpeg: FFMPEG_CLI
 		do
@@ -51,7 +50,7 @@ feature {NONE} -- Initialization
 					-- Detect chapters
 					print ("3. Detecting chapters...%N")
 					create detector.make
-					l_dummy := detector.set_min_chapter_duration (60.0)
+					detector.set_min_chapter_duration (60.0)
 					chapters := detector.detect_transitions (segments)
 					print ("   Found " + chapters.count.out + " chapters.%N%N")
 					

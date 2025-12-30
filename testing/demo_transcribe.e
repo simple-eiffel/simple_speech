@@ -14,7 +14,6 @@ feature {NONE} -- Initialization
 		local
 			speech: SIMPLE_SPEECH
 			segments: ARRAYED_LIST [SPEECH_SEGMENT]
-			l_dummy: SIMPLE_SPEECH
 		do
 			print ("=== Simple Speech Demo ===%N%N")
 			print ("Loading model...%N")
@@ -23,7 +22,8 @@ feature {NONE} -- Initialization
 			
 			if speech.is_valid then
 				print ("Model loaded successfully!%N%N")
-				l_dummy := speech.set_language ("en").set_threads (4)
+				speech.set_language ("en")
+				speech.set_threads (4)
 				
 				print ("Transcribing audio file...%N%N")
 				segments := speech.transcribe_file ("testing/samples/test_audio.wav")

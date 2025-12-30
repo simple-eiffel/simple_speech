@@ -67,50 +67,91 @@ feature -- Status
 
 	is_running: BOOLEAN
 
-feature -- Configuration
+feature -- Configuration Commands
 
-	add_file (a_path: READABLE_STRING_GENERAL): like Current
+	add_file (a_path: READABLE_STRING_GENERAL)
+			-- Add file to processing list.
 		require
 			path_not_empty: not a_path.is_empty
 		do
 			files.extend (a_path.to_string_32)
-			Result := Current
-		ensure
-			result_is_current: Result = Current
 		end
 
-	set_output_folder (a_folder: READABLE_STRING_GENERAL): like Current
+	set_output_folder (a_folder: READABLE_STRING_GENERAL)
+			-- Set output folder.
 		require
 			folder_not_empty: not a_folder.is_empty
 		do
 			output_folder := a_folder.to_string_32
-			Result := Current
-		ensure
-			result_is_current: Result = Current
 		end
 
-	set_format (a_format: READABLE_STRING_GENERAL): like Current
+	set_format (a_format: READABLE_STRING_GENERAL)
+			-- Set output format.
 		do
 			format := a_format.to_string_8
-			Result := Current
-		ensure
-			result_is_current: Result = Current
 		end
 
-	set_languages (a_languages: ARRAY [READABLE_STRING_GENERAL]): like Current
+	set_languages (a_languages: ARRAY [READABLE_STRING_GENERAL])
+			-- Set languages.
 		do
 			languages.wipe_out
 			across a_languages as lang loop
 				languages.extend (lang.to_string_32)
 			end
+		end
+
+	set_progress_callback (a_callback: PROCEDURE [SPEECH_PROGRESS_INFO])
+			-- Set progress callback.
+		do
+			progress_callback := a_callback
+		end
+
+feature -- Configuration Fluent
+
+	with_file (a_path: READABLE_STRING_GENERAL): like Current
+			-- Fluent: add file and return Current.
+		require
+			path_not_empty: not a_path.is_empty
+		do
+			add_file (a_path)
 			Result := Current
 		ensure
 			result_is_current: Result = Current
 		end
 
-	set_progress_callback (a_callback: PROCEDURE [SPEECH_PROGRESS_INFO]): like Current
+	with_output_folder (a_folder: READABLE_STRING_GENERAL): like Current
+			-- Fluent: set output folder and return Current.
+		require
+			folder_not_empty: not a_folder.is_empty
 		do
-			progress_callback := a_callback
+			set_output_folder (a_folder)
+			Result := Current
+		ensure
+			result_is_current: Result = Current
+		end
+
+	with_format (a_format: READABLE_STRING_GENERAL): like Current
+			-- Fluent: set format and return Current.
+		do
+			set_format (a_format)
+			Result := Current
+		ensure
+			result_is_current: Result = Current
+		end
+
+	with_languages (a_languages: ARRAY [READABLE_STRING_GENERAL]): like Current
+			-- Fluent: set languages and return Current.
+		do
+			set_languages (a_languages)
+			Result := Current
+		ensure
+			result_is_current: Result = Current
+		end
+
+	with_progress_callback (a_callback: PROCEDURE [SPEECH_PROGRESS_INFO]): like Current
+			-- Fluent: set progress callback and return Current.
+		do
+			set_progress_callback (a_callback)
 			Result := Current
 		ensure
 			result_is_current: Result = Current
@@ -196,19 +237,18 @@ feature {NONE} -- Implementation
 		end
 
 	do_export (a_exporter: SPEECH_EXPORTER; a_path: STRING_32)
-		local
-			l_dummy: SPEECH_EXPORTER
+			-- Export using configured format.
 		do
 			if format.same_string ("vtt") then
-				l_dummy := a_exporter.export_vtt (a_path)
+				a_exporter.export_vtt (a_path)
 			elseif format.same_string ("srt") then
-				l_dummy := a_exporter.export_srt (a_path)
+				a_exporter.export_srt (a_path)
 			elseif format.same_string ("json") then
-				l_dummy := a_exporter.export_json (a_path)
+				a_exporter.export_json (a_path)
 			elseif format.same_string ("txt") then
-				l_dummy := a_exporter.export_text (a_path)
+				a_exporter.export_text (a_path)
 			else
-				l_dummy := a_exporter.export_vtt (a_path)
+				a_exporter.export_vtt (a_path)
 			end
 		end
 

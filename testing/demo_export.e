@@ -15,7 +15,6 @@ feature {NONE} -- Initialization
 			speech: SIMPLE_SPEECH
 			segments: ARRAYED_LIST [SPEECH_SEGMENT]
 			exporter: SPEECH_EXPORTER
-			l_dummy: SIMPLE_SPEECH
 			l_ok: SPEECH_EXPORTER
 		do
 			print ("=== Simple Speech Export Demo ===%N%N")
@@ -25,7 +24,8 @@ feature {NONE} -- Initialization
 			
 			if speech.is_valid then
 				print ("Model loaded!%N%N")
-				l_dummy := speech.set_language ("en").set_threads (4)
+				speech.set_language ("en")
+				speech.set_threads (4)
 				
 				print ("Transcribing audio file...%N")
 				segments := speech.transcribe_file ("testing/samples/test_audio.wav")
@@ -34,10 +34,10 @@ feature {NONE} -- Initialization
 				print ("Exporting to multiple formats...%N")
 				create exporter.make (segments)
 				
-				l_ok := exporter.export_vtt ("testing/output/transcription.vtt")
-				                .export_srt ("testing/output/transcription.srt")
-				                .export_json ("testing/output/transcription.json")
-				                .export_text ("testing/output/transcription.txt")
+				l_ok := exporter.then_export_vtt ("testing/output/transcription.vtt")
+				                .then_export_srt ("testing/output/transcription.srt")
+				                .then_export_json ("testing/output/transcription.json")
+				                .then_export_text ("testing/output/transcription.txt")
 				
 				if exporter.is_ok then
 					print ("  Created: transcription.vtt%N")

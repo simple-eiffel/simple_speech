@@ -117,20 +117,18 @@ feature -- Test: Transition Detector
 	test_detector_sensitivity
 		local
 			detector: SPEECH_TRANSITION_DETECTOR
-			l_dummy: SPEECH_TRANSITION_DETECTOR
 		do
 			create detector.make
-			l_dummy := detector.set_sensitivity (2)
+			detector.set_sensitivity (2)
 			assert_reals_equal ("sensitivity", 2, detector.sensitivity, 0.001)
 		end
 
 	test_detector_min_duration
 		local
 			detector: SPEECH_TRANSITION_DETECTOR
-			l_dummy: SPEECH_TRANSITION_DETECTOR
 		do
 			create detector.make
-			l_dummy := detector.set_min_chapter_duration (60.0)
+			detector.set_min_chapter_duration (60.0)
 			assert_reals_equal ("min duration", 60.0, detector.min_chapter_duration, 0.001)
 		end
 

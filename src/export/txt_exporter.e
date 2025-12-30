@@ -1,10 +1,14 @@
 note
 	description: "[
 		TXT_EXPORTER - Export speech segments to plain text format.
-		
+
 		Simple text output with optional timestamps.
 		Plain mode: Just the transcript text
 		Timestamped mode: [HH:MM:SS] text
+
+		CQS Pattern:
+		- Commands: set_segments, set_timestamps
+		- Fluent: with_segments, with_timestamps, from_segments (alias)
 	]"
 	author: "Larry Rix"
 
@@ -34,22 +38,41 @@ feature -- Access
 	last_error: detachable STRING_32
 			-- Last error message.
 
-feature -- Configuration
+feature -- Configuration Commands
 
-	from_segments (a_segments: like segments): like Current
+	set_segments (a_segments: like segments)
 			-- Set segments to export.
 		do
 			segments := a_segments
+		ensure
+			segments_set: segments = a_segments
+		end
+
+	set_timestamps (a_include: BOOLEAN)
+			-- Enable/disable timestamp output.
+		do
+			include_timestamps := a_include
+		ensure
+			timestamps_set: include_timestamps = a_include
+		end
+
+feature -- Configuration Fluent
+
+	from_segments,
+	with_segments (a_segments: like segments): like Current
+			-- Fluent: set segments and return Current.
+		do
+			set_segments (a_segments)
 			Result := Current
 		ensure
 			segments_set: segments = a_segments
 			result_is_current: Result = Current
 		end
 
-	set_timestamps (a_include: BOOLEAN): like Current
-			-- Enable/disable timestamp output.
+	with_timestamps (a_include: BOOLEAN): like Current
+			-- Fluent: set timestamps option and return Current.
 		do
-			include_timestamps := a_include
+			set_timestamps (a_include)
 			Result := Current
 		ensure
 			timestamps_set: include_timestamps = a_include
@@ -81,7 +104,7 @@ feature -- Operations
 			i: INTEGER
 		do
 			create Result.make (1024)
-			
+
 			from i := 1 until i > segments.count loop
 				if include_timestamps then
 					Result.append ("[" + format_time (segments[i].start_time) + "] ")

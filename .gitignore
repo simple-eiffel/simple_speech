@@ -27,3 +27,16 @@ models/
 whisper-cli.exe
 lib/*.dll
 exception_trace.log
+
+# Binary output folder
+bin/
+
+# Installer output
+installer_output/
+
+# Resource files
+*.rc
+
+# Clib object files
+Clib/*.obj
+lib/

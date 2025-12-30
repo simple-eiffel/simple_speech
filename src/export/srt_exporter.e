@@ -1,16 +1,20 @@
 note
 	description: "[
 		SRT_EXPORTER - Export speech segments to SubRip (SRT) format.
-		
+
 		SRT is a widely supported subtitle format.
 		Format:
 			1
 			00:00:00,000 --> 00:00:01,000
 			First caption text
-			
+
 			2
 			00:00:01,000 --> 00:00:03,000
 			Second caption text
+
+		CQS Pattern:
+		- Command: set_segments
+		- Fluent: with_segments, from_segments (alias)
 	]"
 	author: "Larry Rix"
 
@@ -36,12 +40,23 @@ feature -- Access
 	last_error: detachable STRING_32
 			-- Last error message.
 
-feature -- Configuration
+feature -- Configuration Commands
 
-	from_segments (a_segments: like segments): like Current
+	set_segments (a_segments: like segments)
 			-- Set segments to export.
 		do
 			segments := a_segments
+		ensure
+			segments_set: segments = a_segments
+		end
+
+feature -- Configuration Fluent
+
+	from_segments,
+	with_segments (a_segments: like segments): like Current
+			-- Fluent: set segments and return Current.
+		do
+			set_segments (a_segments)
 			Result := Current
 		ensure
 			segments_set: segments = a_segments
@@ -73,7 +88,7 @@ feature -- Operations
 			i: INTEGER
 		do
 			create Result.make (1024)
-			
+
 			-- Each segment as a numbered subtitle
 			from i := 1 until i > segments.count loop
 				Result.append (format_subtitle (i, segments[i]))

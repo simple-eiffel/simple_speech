@@ -15,7 +15,6 @@ feature {NONE} -- Initialization
 			pipeline: SPEECH_PIPELINE
 			batch: SPEECH_BATCH_PROCESSOR
 			monitor: SPEECH_MEMORY_MONITOR
-			l_dummy: SPEECH_BATCH_PROCESSOR
 		do
 			print ("=== Simple Speech Batch Processing Demo ===%N%N")
 			
@@ -39,12 +38,12 @@ feature {NONE} -- Initialization
 				create batch.make (pipeline)
 				
 				-- Add actual video files
-				l_dummy := batch.add_file ("testing/samples/blender_movies/sintel.mp4")
-				l_dummy := batch.add_file ("testing/samples/blender_movies/elephants_dream.mp4")
-				l_dummy := batch.add_file ("testing/samples/blender_movies/tears_of_steel.mp4")
-				l_dummy := batch.set_output_folder ("testing/output/batch/")
-				l_dummy := batch.set_format ("vtt")
-				l_dummy := batch.set_progress_callback (agent on_progress)
+				batch.add_file ("testing/samples/blender_movies/sintel.mp4")
+				batch.add_file ("testing/samples/blender_movies/elephants_dream.mp4")
+				batch.add_file ("testing/samples/blender_movies/tears_of_steel.mp4")
+				batch.set_output_folder ("testing/output/batch/")
+				batch.set_format ("vtt")
+				batch.set_progress_callback (agent on_progress)
 				
 				print ("   Files to process: " + batch.files.count.out + "%N")
 				print ("   Output folder: " + batch.output_folder + "%N")

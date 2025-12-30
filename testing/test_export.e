@@ -66,7 +66,6 @@ feature -- Tests
 			segments: ARRAYED_LIST [SPEECH_SEGMENT]
 			exporter: TXT_EXPORTER
 			txt: STRING_8
-			l_dummy: TXT_EXPORTER
 		do
 			segments := make_test_segments
 			create exporter.make
@@ -77,7 +76,8 @@ feature -- Tests
 			
 			-- With timestamps
 			create exporter.make
-			l_dummy := exporter.from_segments (segments).set_timestamps (True)
+			exporter.from_segments (segments)
+				exporter.set_timestamps (True)
 			txt := exporter.to_string
 			check has_timestamp: txt.has_substring ("[00:00:00]") end
 		end
@@ -102,17 +102,16 @@ feature -- Tests
 		local
 			segments: ARRAYED_LIST [SPEECH_SEGMENT]
 			exporter: SPEECH_EXPORTER
-			l_dummy: SPEECH_EXPORTER
 			l_file: PLAIN_TEXT_FILE
 		do
 			segments := make_test_segments
 			create exporter.make (segments)
 			
 			-- Export all formats
-			l_dummy := exporter.export_vtt ("testing/output/test.vtt")
-			                   .export_srt ("testing/output/test.srt")
-			                   .export_json ("testing/output/test.json")
-			                   .export_text ("testing/output/test.txt")
+			exporter.then_export_vtt ("testing/output/test.vtt")
+			                   .then_export_srt ("testing/output/test.srt")
+			                   .then_export_json ("testing/output/test.json")
+			                   .then_export_text ("testing/output/test.txt").do_nothing
 			
 			check exports_ok: exporter.is_ok end
 			

@@ -1,14 +1,14 @@
 note
 	description: "[
 		SIMPLE_SPEECH - Main facade for speech-to-text operations.
-		
+
 		Swiss Army knife speech-to-text library with:
 		- File transcription (WAV)
 		- PCM sample transcription
 		- Multi-language support (99+ via whisper)
 		- Configurable threading
 		- Optional translation to English
-		
+
 		Example:
 			speech: SIMPLE_SPEECH
 			create speech.make ("models/ggml-base.en.bin")
@@ -18,11 +18,15 @@ note
 					print (seg.text + "%N")
 				end
 			end
-		
+
 		Architecture:
 		- Uses SPEECH_ENGINE abstraction for loose coupling
 		- Default engine: WHISPER_ENGINE (whisper.cpp)
 		- Engine can be injected for testing or alternative backends
+
+		CQS Pattern:
+		- Commands (procedures): set_language, set_threads, set_translate
+		- Fluent queries: with_language, with_threads, with_translate
 	]"
 	author: "Larry Rix"
 	date: "$Date$"
@@ -82,34 +86,58 @@ feature -- Status
 	last_error: detachable STRING_32
 			-- Last error message.
 
-feature -- Configuration (Fluent)
+feature -- Configuration Commands
 
-	set_language (a_language: READABLE_STRING_GENERAL): like Current
+	set_language (a_language: READABLE_STRING_GENERAL)
 			-- Set source language (e.g., "en", "es", "auto").
 		require
 			language_not_empty: not a_language.is_empty
 		do
 			engine.set_language (a_language)
-			Result := Current
-		ensure
-			result_is_current: Result = Current
 		end
 
-	set_threads (a_count: INTEGER): like Current
+	set_threads (a_count: INTEGER)
 			-- Set number of CPU threads.
 		require
 			positive: a_count > 0
 		do
 			engine.set_threads (a_count)
+		end
+
+	set_translate (a_translate: BOOLEAN)
+			-- Enable/disable translation to English.
+		do
+			engine.set_translate (a_translate)
+		end
+
+feature -- Configuration Fluent
+
+	with_language (a_language: READABLE_STRING_GENERAL): like Current
+			-- Fluent: set source language and return Current.
+		require
+			language_not_empty: not a_language.is_empty
+		do
+			set_language (a_language)
 			Result := Current
 		ensure
 			result_is_current: Result = Current
 		end
 
-	set_translate (a_translate: BOOLEAN): like Current
-			-- Enable/disable translation to English.
+	with_threads (a_count: INTEGER): like Current
+			-- Fluent: set thread count and return Current.
+		require
+			positive: a_count > 0
 		do
-			engine.set_translate (a_translate)
+			set_threads (a_count)
+			Result := Current
+		ensure
+			result_is_current: Result = Current
+		end
+
+	with_translate (a_translate: BOOLEAN): like Current
+			-- Fluent: set translate mode and return Current.
+		do
+			set_translate (a_translate)
 			Result := Current
 		ensure
 			result_is_current: Result = Current
