@@ -2,7 +2,7 @@
 ; Created with Inno Setup
 
 #define MyAppName "Simple Speech CLI"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.1.0"
 #define MyAppPublisher "Simple Eiffel"
 #define MyAppURL "https://github.com/simple-eiffel"
 #define MyAppExeName "speech_cli.exe"

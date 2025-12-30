@@ -14,7 +14,7 @@
         <h1>simple_speech</h1>
         <p class="tagline">Local-First Media Intelligence Pipeline</p>
         <div class="badges">
-            <span class="badge badge-version">v1.0.0</span>
+            <span class="badge badge-version">v1.1.0</span>
             <span class="badge badge-license">MIT</span>
             <span class="badge badge-rfc">Phase 0-7</span>
         </div>
@@ -25,6 +25,7 @@
             <li><a href="#overview">Overview</a></li>
             <li><a href="#installation">Installation</a></li>
             <li><a href="#quick-start">Quick Start</a></li>
+            <li><a href="#cli">CLI</a></li>
             <li><a href="cookbook.html">Cookbook</a></li>
             <li><a href="#api-reference">API Reference</a></li>
             <li><a href="https://github.com/simple-eiffel/simple_speech">GitHub</a></li>
@@ -114,6 +115,47 @@ do
     end
 end</code></pre>
             <p>See <a href="cookbook.html">Cookbook</a> for more recipes.</p>
+        </section>
+
+        
+        <section id="cli">
+            <h2>Command-Line Interface</h2>
+            <p><strong>v1.1.0</strong> - Standalone CLI for use without Eiffel code.</p>
+            
+            <h3>Installation</h3>
+            <p><strong>Windows Installer:</strong> Download <code>SimpleSpeech_Setup_1.1.0.exe</code> from
+                <a href="https://github.com/simple-eiffel/simple_speech/releases">Releases</a></p>
+            
+            <h3>Commands</h3>
+            <table>
+                <thead><tr><th>Command</th><th>Description</th></tr></thead>
+                <tbody>
+                    <tr><td>transcribe &lt;file&gt;</td><td>Transcribe audio/video to text</td></tr>
+                    <tr><td>export &lt;file&gt;</td><td>Transcribe and export to file</td></tr>
+                    <tr><td>chapters &lt;file&gt;</td><td>Detect chapter markers</td></tr>
+                    <tr><td>batch &lt;files...&gt;</td><td>Process multiple files</td></tr>
+                    <tr><td>embed &lt;video&gt;</td><td>Embed captions into video</td></tr>
+                    <tr><td>info &lt;file&gt;</td><td>Show media file info</td></tr>
+                </tbody>
+            </table>
+            
+            <h3>Examples</h3>
+<pre><code># Transcribe and export to SRT
+speech_cli export video.mp4 --output captions.srt --format srt
+
+# Detect chapters and export to JSON
+speech_cli chapters video.mp4 --output chapters.json --format json
+
+# Embed captions into video
+speech_cli embed video.mp4 --output video_with_captions.mp4</code></pre>
+            
+            <h3>Model Auto-Detection</h3>
+            <p>The CLI automatically searches for models in:</p>
+            <ol>
+                <li><code>models/</code> folder next to the executable</li>
+                <li><code>models/</code> in the current directory</li>
+                <li>Path specified via <code>--model</code></li>
+            </ol>
         </section>
 
         <section id="api-reference">

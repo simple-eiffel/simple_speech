@@ -32,6 +32,11 @@ class
 create
 	make
 
+feature -- Constants
+
+	Version: STRING = "1.1.0"
+			-- CLI version number.
+
 feature {NONE} -- Initialization
 
 	make
@@ -39,15 +44,14 @@ feature {NONE} -- Initialization
 		local
 			args: ARGUMENTS_32
 		do
-
 			create args
 			create output_lines.make (20)
 
-			model_path := "models/ggml-base.en.bin"
+			-- Find model path (executable dir first, then current dir)
+			model_path := find_default_model (args)
 			language := "en"
 			output_format := "vtt"
 			thread_count := 4
-
 
 			if args.argument_count = 0 then
 				show_help
@@ -64,6 +68,45 @@ feature {NONE} -- Initialization
 				io.put_new_line
 			end
 			io.output.flush
+		end
+
+	find_default_model (args: ARGUMENTS_32): STRING_32
+			-- Find model path: check executable dir first, then current dir.
+		local
+			exe_path: STRING_32
+			exe_dir: STRING_32
+			model_name: STRING_32
+			candidate: STRING_32
+			f: RAW_FILE
+			last_sep: INTEGER
+		do
+			model_name := "models/ggml-base.en.bin"
+
+			-- Get executable directory from command name
+			exe_path := args.command_name
+			last_sep := exe_path.last_index_of ('\', exe_path.count)
+			if last_sep = 0 then
+				last_sep := exe_path.last_index_of ('/', exe_path.count)
+			end
+
+			if last_sep > 0 then
+				exe_dir := exe_path.substring (1, last_sep)
+
+				-- Check executable dir first
+				create candidate.make_from_string (exe_dir)
+				candidate.append (model_name)
+
+				create f.make_with_name (candidate)
+				if f.exists then
+					Result := candidate
+				else
+					-- Fall back to current directory
+					Result := model_name
+				end
+			else
+				-- No directory in path, use current directory
+				Result := model_name
+			end
 		end
 
 feature -- Status
@@ -568,7 +611,7 @@ feature {NONE} -- Output
 	show_help
 			-- Display help message.
 		do
-			output ("simple_speech - Speech-to-text transcription toolkit")
+			output ("simple_speech CLI v" + Version + " - Speech-to-text transcription toolkit")
 			output ("")
 			output ("USAGE:")
 			output ("  speech_cli <command> [options] <file(s)>")

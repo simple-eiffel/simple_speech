@@ -172,6 +172,67 @@ ollama pull llama3.2
 <library name="simple_speech" location="$SIMPLE_EIFFEL/simple_speech/simple_speech.ecf"/>
 ```
 
+## Command-Line Interface (CLI)
+
+**simple_speech** v1.1.0 includes a full-featured CLI for standalone use without any Eiffel code.
+
+### Installation Options
+
+**Option 1: Windows Installer (Recommended)**
+- Download `SimpleSpeech_Setup_1.1.0.exe` from [Releases](https://github.com/simple-eiffel/simple_speech/releases)
+- Optionally add to PATH during installation
+- Models directory created automatically
+
+**Option 2: Manual**
+- Copy `speech_cli.exe` and required DLLs to a folder
+- Add to PATH
+- Download Whisper models to `models/` subfolder
+
+### CLI Commands
+
+```bash
+# Show help and version
+speech_cli --help
+
+# Transcribe to console
+speech_cli transcribe video.mp4
+
+# Transcribe and export to file
+speech_cli export video.mp4 --output captions.srt --format srt
+
+# Detect chapters
+speech_cli chapters video.mp4 --output chapters.json --format json
+
+# Batch process multiple files
+speech_cli batch video1.mp4 video2.mp4 --output ./captions/
+
+# Embed captions into video
+speech_cli embed video.mp4 --output video_with_captions.mp4
+
+# Show media file info
+speech_cli info video.mp4
+```
+
+### CLI Options
+
+| Option | Description |
+|--------|-------------|
+| `-h, --help` | Show help |
+| `-m, --model <path>` | Whisper model path (auto-detected if not specified) |
+| `-l, --language <code>` | Source language: en, es, zh, etc. (default: en) |
+| `-o, --output <path>` | Output file or directory |
+| `-f, --format <fmt>` | Export format: vtt, srt, json, txt (default: vtt) |
+| `-t, --threads <n>` | CPU threads (default: 4) |
+| `--translate` | Translate to English |
+| `-q, --quiet` | Suppress progress messages |
+
+### Model Auto-Detection
+
+The CLI automatically searches for models in:
+1. `models/` folder next to the executable
+2. `models/` in the current directory
+3. Path specified via `--model`
+
 ## Quick Start with SPEECH_QUICK
 
 ```eiffel
