@@ -6,7 +6,7 @@
 
 void* whisper_wrapper_init(const char* model_path) {
     struct whisper_context_params cparams = whisper_context_default_params();
-    cparams.use_gpu = false;
+    cparams.use_gpu = true;
     return whisper_init_from_file_with_params(model_path, cparams);
 }
 
