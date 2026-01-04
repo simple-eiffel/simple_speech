@@ -129,6 +129,71 @@ feature -- Translation
 
 feature -- Correction
 
+	correct_with_context (a_segments: ARRAYED_LIST [SPEECH_SEGMENT]; a_topic_hint: READABLE_STRING_GENERAL): ARRAYED_LIST [SPEECH_SEGMENT]
+			-- Fix transcription errors in segments using topic context.
+			-- `a_topic_hint` provides domain context for better corrections
+			-- (e.g., "Eiffel programming tutorial" helps correct "eyeful" to "Eiffel").
+		require
+			segments_attached: a_segments /= Void
+			has_segments: a_segments.count > 0
+			hint_not_empty: not a_topic_hint.is_empty
+		local
+			l_text: STRING_32
+			l_prompt: STRING_32
+			l_response: AI_RESPONSE
+			l_corrected_text: STRING_32
+			l_lines: LIST [STRING_32]
+			i: INTEGER
+		do
+			clear_error
+			create Result.make (a_segments.count)
+
+			-- Build combined text
+			l_text := combine_segment_texts (a_segments)
+
+			-- Build prompt with topic context
+			create l_prompt.make (800)
+			l_prompt.append ("Context: This is a transcription about: ")
+			l_prompt.append (a_topic_hint.to_string_32)
+			l_prompt.append ("%N%N")
+			l_prompt.append ("Fix any transcription errors, especially domain-specific terminology that may have been misheard. ")
+			l_prompt.append ("For example, if this is about '")
+			l_prompt.append (a_topic_hint.to_string_32)
+			l_prompt.append ("', correct related terms that Whisper may have transcribed incorrectly. ")
+			l_prompt.append ("Keep the same line structure (one segment per line). Only output the corrected text, no explanations:%N%N")
+			l_prompt.append (l_text)
+
+			-- Call AI with enhanced system prompt
+			l_response := client.ask_with_system (Context_correction_system_prompt, l_prompt)
+
+			if l_response.is_success then
+				l_corrected_text := l_response.text
+				l_lines := l_corrected_text.split ('%N')
+
+				-- Create corrected segments with original timing
+				from
+					i := 1
+					a_segments.start
+				until
+					a_segments.after or i > l_lines.count
+				loop
+					Result.extend (create {SPEECH_SEGMENT}.make (
+						l_lines.i_th (i),
+						a_segments.item.start_time,
+						a_segments.item.end_time
+					))
+					a_segments.forth
+					i := i + 1
+				end
+			else
+				set_error (l_response.error_message)
+				-- Return original segments on error
+				Result := a_segments.twin
+			end
+		ensure
+			result_attached: Result /= Void
+		end
+
 	correct (a_segments: ARRAYED_LIST [SPEECH_SEGMENT]): ARRAYED_LIST [SPEECH_SEGMENT]
 			-- Fix transcription errors in segments.
 		require
@@ -303,6 +368,11 @@ feature {NONE} -- Constants
 	Summary_system_prompt: STRING_32
 		once
 			Result := "You are a professional note-taker. Create concise, well-organized summaries that capture key points and action items."
+		end
+
+	Context_correction_system_prompt: STRING_32
+		once
+			Result := "You are a professional transcription editor with expertise in domain-specific terminology. Fix transcription errors based on the provided context. Focus on correcting domain-specific words that may have been misheard. Maintain the same line structure as the input."
 		end
 
 invariant
