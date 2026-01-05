@@ -1,12 +1,14 @@
 note
 	description: "[
 		SPEECH_SEGMENT - A single transcribed segment with timing information.
-		
+
 		Represents one piece of transcribed speech with:
 		- text: The transcribed text
 		- start_time: When this segment begins (seconds)
 		- end_time: When this segment ends (seconds)
 		- confidence: Optional confidence score (0.0-1.0)
+		- speaker_id: Optional speaker identifier for diarization
+		- speaker_label: Optional human-readable speaker label
 	]"
 	author: "Larry Rix"
 
@@ -15,7 +17,8 @@ class
 
 create
 	make,
-	make_with_confidence
+	make_with_confidence,
+	make_with_speaker
 
 feature {NONE} -- Initialization
 
@@ -48,6 +51,22 @@ feature {NONE} -- Initialization
 			confidence_set: confidence = a_confidence
 		end
 
+	make_with_speaker (a_text: READABLE_STRING_GENERAL; a_start, a_end: REAL_64; a_speaker_id: INTEGER; a_speaker_label: READABLE_STRING_GENERAL)
+			-- Create segment with text, timing, and speaker information.
+		require
+			text_not_empty: not a_text.is_empty
+			valid_times: a_start >= 0 and a_end >= a_start
+			valid_speaker_id: a_speaker_id >= 0
+		do
+			make (a_text, a_start, a_end)
+			speaker_id := a_speaker_id
+			create speaker_label.make_from_string_general (a_speaker_label)
+		ensure
+			speaker_id_set: speaker_id = a_speaker_id
+			speaker_label_attached: attached speaker_label
+			has_speaker: has_speaker
+		end
+
 feature -- Access
 
 	text: STRING_32
@@ -61,6 +80,12 @@ feature -- Access
 
 	confidence: REAL_32
 			-- Confidence score (0.0-1.0), or -1.0 if not available.
+
+	speaker_id: INTEGER
+			-- Speaker identifier (0 = unknown, 1+ = identified speaker).
+
+	speaker_label: detachable STRING_32
+			-- Human-readable speaker label (e.g., "SPEAKER_1", "Host").
 
 feature -- Queries
 
@@ -78,6 +103,24 @@ feature -- Queries
 			Result := confidence >= 0.0
 		end
 
+	has_speaker: BOOLEAN
+			-- Is speaker information available?
+		do
+			Result := speaker_id > 0
+		end
+
+	speaker_label_or_default: STRING_32
+			-- Speaker label, or "SPEAKER_N" if not set.
+		do
+			if attached speaker_label as lbl and then not lbl.is_empty then
+				Result := lbl
+			else
+				create Result.make (12)
+				Result.append ("SPEAKER_")
+				Result.append_integer (speaker_id.max (1))
+			end
+		end
+
 	start_time_formatted: STRING_8
 			-- Start time as HH:MM:SS.mmm
 		do
@@ -88,6 +131,29 @@ feature -- Queries
 			-- End time as HH:MM:SS.mmm
 		do
 			Result := format_time (end_time)
+		end
+
+feature -- Speaker modification
+
+	set_speaker (a_id: INTEGER; a_label: READABLE_STRING_GENERAL)
+			-- Set speaker information.
+		require
+			valid_id: a_id >= 0
+		do
+			speaker_id := a_id
+			create speaker_label.make_from_string_general (a_label)
+		ensure
+			id_set: speaker_id = a_id
+			label_set: attached speaker_label as lbl implies lbl.same_string_general (a_label)
+		end
+
+	clear_speaker
+			-- Remove speaker information.
+		do
+			speaker_id := 0
+			speaker_label := Void
+		ensure
+			no_speaker: not has_speaker
 		end
 
 feature {NONE} -- Implementation

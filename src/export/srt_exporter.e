@@ -103,6 +103,7 @@ feature {NONE} -- Implementation
 
 	format_subtitle (a_number: INTEGER; a_segment: SPEECH_SEGMENT): STRING_8
 			-- Format a single SRT subtitle entry.
+			-- If speaker info available, prefixes text with [SPEAKER_N].
 		do
 			create Result.make (128)
 			-- Sequence number
@@ -113,6 +114,12 @@ feature {NONE} -- Implementation
 			Result.append (" --> ")
 			Result.append (format_time (a_segment.end_time))
 			Result.append ("%N")
+			-- Speaker label (if available)
+			if a_segment.has_speaker then
+				Result.append ("[")
+				Result.append (a_segment.speaker_label_or_default.to_string_8)
+				Result.append ("] ")
+			end
 			-- Text
 			Result.append (a_segment.text.to_string_8)
 			Result.append ("%N")

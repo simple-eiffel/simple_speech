@@ -62,6 +62,18 @@ feature {NONE} -- Test Runners
 			-- Memory Monitor tests
 			print ("%N--- MEMORY_MONITOR Tests ---%N")
 			run_test (agent lib_tests.test_memory_monitor, "test_memory_monitor")
+
+			-- Diarization tests
+			print ("%N--- SHERPA_DIARIZATION Tests ---%N")
+			run_diarization_tests
+		end
+
+	run_diarization_tests
+			-- Run SHERPA_DIARIZATION tests.
+		local
+			l_diar_tests: TEST_DIARIZATION
+		do
+			create l_diar_tests.make
 		end
 
 feature {NONE} -- Test Infrastructure

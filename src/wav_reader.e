@@ -153,12 +153,14 @@ feature -- Operations
 								last_error := {STRING_32} "Data chunk not found"
 								l_file.close
 							else
-								-- Read raw PCM data byte by byte
+								-- Read raw PCM data using stream (fast bulk read)
 								create l_raw_samples.make_filled (0, l_data_size)
-								from j := 0 until j >= l_data_size or l_file.end_of_file loop
-									l_file.read_character
-									l_raw_samples[j] := l_file.last_character.code.to_natural_8
-									j := j + 1
+								l_file.read_stream (l_data_size)
+								if attached l_file.last_string as ls then
+									from j := 0 until j >= ls.count or j >= l_data_size loop
+										l_raw_samples[j] := ls.item (j + 1).code.to_natural_8
+										j := j + 1
+									end
 								end
 								l_file.close
 								

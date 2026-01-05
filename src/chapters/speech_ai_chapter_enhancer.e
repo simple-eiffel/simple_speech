@@ -80,7 +80,7 @@ feature -- Enhancement
 			ai_client.use_concise_responses
 			l_response := ai_client.ask (l_prompt)
 			
-			if l_response.is_success and then attached l_response.content as content then
+			if l_response.is_success and then attached l_response.text as content then
 				Result := content.to_string_32
 				Result.left_adjust
 				Result.right_adjust
@@ -103,7 +103,7 @@ feature -- Enhancement
 			ai_client.use_concise_responses
 			l_response := ai_client.ask (l_prompt)
 			
-			if l_response.is_success and then attached l_response.content as content then
+			if l_response.is_success and then attached l_response.text as content then
 				Result := content.to_string_32
 				Result.left_adjust
 				Result.right_adjust
@@ -127,7 +127,7 @@ feature -- Enhancement
 			ai_client.use_concise_responses
 			l_response := ai_client.ask (l_prompt)
 			
-			if l_response.is_success and then attached l_response.content as content then
+			if l_response.is_success and then attached l_response.text as content then
 				l_content := content.to_string_8.as_upper
 				if l_content.has_substring ("YES") then
 					Result := [True, extract_confidence (l_content)]
@@ -157,7 +157,7 @@ feature -- Enhancement
 					ai_client.use_concise_responses
 					l_response := ai_client.ask (l_prompt)
 					
-					if l_response.is_success and then attached l_response.content as content then
+					if l_response.is_success and then attached l_response.text as content then
 						l_translated := content.to_string_8
 						l_translated.left_adjust
 						l_translated.right_adjust
@@ -186,7 +186,7 @@ feature -- Enhancement
 			ai_client.use_concise_responses
 			l_response := ai_client.ask (l_prompt)
 			
-			if l_response.is_success and then attached l_response.content as content then
+			if l_response.is_success and then attached l_response.text as content then
 				l_content := content.to_string_8
 				l_parts := l_content.split (',')
 				across l_parts as part loop

@@ -170,18 +170,29 @@ feature -- Correction
 				l_corrected_text := l_response.text
 				l_lines := l_corrected_text.split ('%N')
 
-				-- Create corrected segments with original timing
+				-- Create corrected segments with original timing and speaker info
 				from
 					i := 1
 					a_segments.start
 				until
 					a_segments.after or i > l_lines.count
 				loop
-					Result.extend (create {SPEECH_SEGMENT}.make (
-						l_lines.i_th (i),
-						a_segments.item.start_time,
-						a_segments.item.end_time
-					))
+					if a_segments.item.has_speaker then
+						-- Preserve speaker info from original segment
+						Result.extend (create {SPEECH_SEGMENT}.make_with_speaker (
+							l_lines.i_th (i),
+							a_segments.item.start_time,
+							a_segments.item.end_time,
+							a_segments.item.speaker_id,
+							a_segments.item.speaker_label_or_default
+						))
+					else
+						Result.extend (create {SPEECH_SEGMENT}.make (
+							l_lines.i_th (i),
+							a_segments.item.start_time,
+							a_segments.item.end_time
+						))
+					end
 					a_segments.forth
 					i := i + 1
 				end
@@ -226,18 +237,29 @@ feature -- Correction
 				l_corrected_text := l_response.text
 				l_lines := l_corrected_text.split ('%N')
 
-				-- Create corrected segments with original timing
+				-- Create corrected segments with original timing and speaker info
 				from
 					i := 1
 					a_segments.start
 				until
 					a_segments.after or i > l_lines.count
 				loop
-					Result.extend (create {SPEECH_SEGMENT}.make (
-						l_lines.i_th (i),
-						a_segments.item.start_time,
-						a_segments.item.end_time
-					))
+					if a_segments.item.has_speaker then
+						-- Preserve speaker info from original segment
+						Result.extend (create {SPEECH_SEGMENT}.make_with_speaker (
+							l_lines.i_th (i),
+							a_segments.item.start_time,
+							a_segments.item.end_time,
+							a_segments.item.speaker_id,
+							a_segments.item.speaker_label_or_default
+						))
+					else
+						Result.extend (create {SPEECH_SEGMENT}.make (
+							l_lines.i_th (i),
+							a_segments.item.start_time,
+							a_segments.item.end_time
+						))
+					end
 					a_segments.forth
 					i := i + 1
 				end

@@ -120,24 +120,24 @@ feature -- Operations
 			l_translate: INTEGER
 		do
 			create Result.make (10)
-			
+
 			if ctx /= default_pointer and then a_samples.count > 0 then
 				-- Get native array pointer
 				l_special := a_samples.to_special
-				
+
 				-- Set language
 				create l_lang.make (language)
-				
+
 				-- Translate flag
 				if translate_to_english then
 					l_translate := 1
 				else
 					l_translate := 0
 				end
-				
+
 				-- Run whisper transcription
 				l_result := c_whisper_wrapper_transcribe (ctx, l_special.base_address, a_samples.count, thread_count, l_lang.item, l_translate)
-				
+
 				if l_result = 0 then
 					-- Get segments
 					n := c_whisper_wrapper_n_segments (ctx)
@@ -152,7 +152,7 @@ feature -- Operations
 								l_t1 := c_whisper_wrapper_segment_t1 (ctx, i)
 								l_start := l_t0 / 100.0
 								l_end := l_t1 / 100.0
-								
+
 								create l_segment.make (l_text, l_start, l_end)
 								Result.extend (l_segment)
 							end
@@ -162,6 +162,7 @@ feature -- Operations
 				else
 					last_error := {STRING_32} "Transcription failed with code: " + l_result.out
 				end
+			else
 			end
 		end
 
