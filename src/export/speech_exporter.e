@@ -60,6 +60,12 @@ feature -- Access
 	errors: ARRAYED_LIST [STRING_32]
 			-- Accumulated errors from export operations.
 
+	ai_provider: detachable STRING_8
+			-- AI provider used for transcription (e.g., "claude", "ollama", "google").
+
+	ai_model: detachable STRING_8
+			-- AI model name (e.g., "claude-sonnet-4-20250514", "llama3.2:latest").
+
 	is_ok: BOOLEAN
 			-- Did all exports succeed?
 		do
@@ -84,6 +90,19 @@ feature -- Configuration Commands
 			segments_set: segments = a_segments
 		end
 
+	set_ai_source (a_provider: STRING_8; a_model: STRING_8)
+			-- Set AI provider and model used for transcription.
+			-- This will be included as metadata in exported files.
+		require
+			provider_not_empty: not a_provider.is_empty
+		do
+			ai_provider := a_provider
+			ai_model := a_model
+		ensure
+			provider_set: ai_provider ~ a_provider
+			model_set: ai_model ~ a_model
+		end
+
 feature -- Configuration Fluent
 
 	with_segments (a_segments: like segments): like Current
@@ -105,6 +124,18 @@ feature -- Configuration Fluent
 			result_is_current: Result = Current
 		end
 
+	with_ai_source (a_provider: STRING_8; a_model: STRING_8): like Current
+			-- Fluent: set AI source and return Current.
+		require
+			provider_not_empty: not a_provider.is_empty
+		do
+			set_ai_source (a_provider, a_model)
+			Result := Current
+		ensure
+			provider_set: ai_provider ~ a_provider
+			result_is_current: Result = Current
+		end
+
 feature -- Export Commands
 
 	export_vtt (a_path: READABLE_STRING_GENERAL)
@@ -114,6 +145,9 @@ feature -- Export Commands
 		do
 			create l_exporter.make
 			l_exporter.set_segments (segments)
+			if attached ai_provider as l_provider and then attached ai_model as l_model then
+				l_exporter.set_ai_source (l_provider, l_model)
+			end
 			if not l_exporter.export_to_file (a_path) then
 				add_error ("VTT export failed: " + a_path.to_string_32)
 			end
@@ -126,6 +160,9 @@ feature -- Export Commands
 		do
 			create l_exporter.make
 			l_exporter.set_segments (segments)
+			if attached ai_provider as l_provider and then attached ai_model as l_model then
+				l_exporter.set_ai_source (l_provider, l_model)
+			end
 			if not l_exporter.export_to_file (a_path) then
 				add_error ("SRT export failed: " + a_path.to_string_32)
 			end
@@ -224,6 +261,9 @@ feature -- String Generation
 		do
 			create l_exporter.make
 			l_exporter.set_segments (segments)
+			if attached ai_provider as l_provider and then attached ai_model as l_model then
+				l_exporter.set_ai_source (l_provider, l_model)
+			end
 			Result := l_exporter.to_string
 		end
 
@@ -234,6 +274,9 @@ feature -- String Generation
 		do
 			create l_exporter.make
 			l_exporter.set_segments (segments)
+			if attached ai_provider as l_provider and then attached ai_model as l_model then
+				l_exporter.set_ai_source (l_provider, l_model)
+			end
 			Result := l_exporter.to_string
 		end
 

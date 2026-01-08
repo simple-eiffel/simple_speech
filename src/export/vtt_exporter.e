@@ -32,6 +32,12 @@ feature -- Access
 	last_error: detachable STRING_32
 			-- Last error message.
 
+	ai_provider: detachable STRING_8
+			-- AI provider used for transcription (e.g., "claude", "ollama", "google").
+
+	ai_model: detachable STRING_8
+			-- AI model name (e.g., "claude-sonnet-4-20250514", "llama3.2:latest").
+
 feature -- Configuration Commands
 
 	set_segments (a_segments: like segments)
@@ -40,6 +46,18 @@ feature -- Configuration Commands
 			segments := a_segments
 		ensure
 			segments_set: segments = a_segments
+		end
+
+	set_ai_source (a_provider: STRING_8; a_model: STRING_8)
+			-- Set AI provider and model used for transcription.
+		require
+			provider_not_empty: not a_provider.is_empty
+		do
+			ai_provider := a_provider
+			ai_model := a_model
+		ensure
+			provider_set: ai_provider ~ a_provider
+			model_set: ai_model ~ a_model
 		end
 
 feature -- Configuration Fluent
@@ -52,6 +70,18 @@ feature -- Configuration Fluent
 			Result := Current
 		ensure
 			segments_set: segments = a_segments
+			result_is_current: Result = Current
+		end
+
+	with_ai_source (a_provider: STRING_8; a_model: STRING_8): like Current
+			-- Fluent: set AI source and return Current.
+		require
+			provider_not_empty: not a_provider.is_empty
+		do
+			set_ai_source (a_provider, a_model)
+			Result := Current
+		ensure
+			provider_set: ai_provider ~ a_provider
 			result_is_current: Result = Current
 		end
 
@@ -76,13 +106,31 @@ feature -- Operations
 
 	to_string: STRING_8
 			-- Generate VTT content as string.
+			-- Includes AI source NOTE comment if ai_provider is set.
 		local
 			i: INTEGER
+			l_date: DATE_TIME
 		do
 			create Result.make (1024)
 
 			-- WebVTT header
-			Result.append ("WEBVTT%N%N")
+			Result.append ("WEBVTT%N")
+
+			-- AI source metadata (NOTE comments after header)
+			if attached ai_provider as l_provider then
+				Result.append ("NOTE AI-Source: ")
+				Result.append (l_provider)
+				if attached ai_model as l_model and then not l_model.is_empty then
+					Result.append (" (")
+					Result.append (l_model)
+					Result.append (")")
+				end
+				Result.append ("%N")
+				create l_date.make_now
+				Result.append ("NOTE Processed: ")
+				Result.append (l_date.formatted_out ("yyyy-[0]mm-[0]dd [0]hh:[0]mi:[0]ss"))
+			end
+			Result.append ("%N%N")
 
 			-- Each segment as a cue
 			from i := 1 until i > segments.count loop
