@@ -30,62 +30,122 @@ feature -- Access
 	ai_client: AI_CLIENT
 			-- AI client for API calls.
 
+	last_error: detachable STRING_8
+			-- Last error message from AI title generation (Void if success).
+
+	titles_generated: INTEGER
+			-- Count of successfully generated titles in last enhance call.
+
+	titles_failed: INTEGER
+			-- Count of failed title generations in last enhance call.
+
+	enhancement_errors: ARRAYED_LIST [STRING_8]
+			-- Errors collected during last enhance_chapters call.
+		attribute
+			create Result.make (5)
+		end
+
 feature -- Enhancement
 
 	enhance_chapters (chapters: LIST [SPEECH_CHAPTER]; segments: LIST [SPEECH_SEGMENT]): ARRAYED_LIST [SPEECH_CHAPTER]
 			-- Enhance chapters with AI-generated titles and summaries.
+			-- Check `titles_generated` and `titles_failed` after call for statistics.
 		local
 			l_segment_text: STRING_32
 			l_enhanced: SPEECH_CHAPTER
 		do
+			titles_generated := 0
+			titles_failed := 0
+			enhancement_errors.wipe_out
 			create Result.make (chapters.count)
-			
+
 			across chapters as ch loop
 				l_segment_text := get_text_for_chapter (ch, segments)
 				create l_enhanced.make (ch.start_time, ch.end_time)
 				l_enhanced.set_transition_type (ch.transition_type)
 				l_enhanced.set_confidence (ch.confidence)
-				
+
 				-- Generate title
 				if attached generate_chapter_title (l_segment_text) as title then
 					l_enhanced.set_title (title)
+					titles_generated := titles_generated + 1
 				else
+					-- Keep original title (should be "Chapter N" from detector)
 					l_enhanced.set_title (ch.title)
+					titles_failed := titles_failed + 1
+					-- Capture the error for logging
+					if attached last_error as err then
+						enhancement_errors.extend (err)
+					end
 				end
-				
-				-- Generate summary
+
+				-- Generate summary (optional, don't fail on this)
 				if attached generate_chapter_summary (l_segment_text) as summary then
 					l_enhanced.set_summary (summary)
 				end
-				
+
 				-- Copy keywords
 				across ch.keywords as kw loop
 					l_enhanced.add_keyword (kw)
 				end
-				
+
 				Result.extend (l_enhanced)
 			end
+		ensure
+			same_count: Result.count = chapters.count
+			stats_valid: titles_generated + titles_failed = chapters.count
 		end
 
 	generate_chapter_title (segment_text: READABLE_STRING_GENERAL): detachable STRING_32
 			-- Generate a meaningful chapter title from segment text.
+			-- Returns Void if AI fails or segment text is too short.
 		local
 			l_prompt: STRING_32
 			l_response: AI_RESPONSE
+			l_text_sample: STRING_32
 		do
-			create l_prompt.make (2100)
-			l_prompt.append ("Generate a concise chapter title (3-7 words) for the following transcript segment. Return ONLY the title, no quotes or explanation:%N%N")
-			l_prompt.append (segment_text.to_string_32.head (2000))
-			
-			ai_client.use_concise_responses
-			l_response := ai_client.ask (l_prompt)
-			
-			if l_response.is_success and then attached l_response.text as content then
-				Result := content.to_string_32
-				Result.left_adjust
-				Result.right_adjust
-				if Result.count >= 2 and then Result.starts_with ("%"") and Result.ends_with ("%"") then
-					Result := Result.substring (2, Result.count - 1)
+			-- Skip if segment text is too short for meaningful title
+			if segment_text.count < 50 then
+				last_error := "Segment text too short (" + segment_text.count.out + " chars)"
+			else
+				l_text_sample := segment_text.to_string_32.head (2000)
+
+				create l_prompt.make (2100)
+				l_prompt.append ("Generate a concise chapter title (3-7 words) for the following transcript segment. Return ONLY the title, no quotes or explanation:%N%N")
+				l_prompt.append (l_text_sample)
+
+				ai_client.use_concise_responses
+				l_response := ai_client.ask (l_prompt)
+
+				if l_response.is_success then
+					if attached l_response.text as content and then content.count > 0 then
+						Result := content.to_string_32
+						Result.left_adjust
+						Result.right_adjust
+						-- Strip surrounding quotes if present
+						if Result.count >= 2 and then Result.starts_with ("%"") and Result.ends_with ("%"") then
+							Result := Result.substring (2, Result.count - 1)
+						end
+						-- Strip single quotes too
+						if Result.count >= 2 and then Result.starts_with ("'") and Result.ends_with ("'") then
+							Result := Result.substring (2, Result.count - 1)
+						end
+						-- Validate result is not empty or trivial
+						if Result.is_empty or else Result.same_string ("Chapter") or else Result.count < 3 then
+							last_error := "AI returned trivial title: " + Result.to_string_8
+							Result := Void
+						else
+							last_error := Void -- Success
+						end
+					else
+						last_error := "AI response has no text content"
+					end
+				else
+					if attached l_response.error_message as err then
+						last_error := "AI request failed: " + err.to_string_8
+					else
+						last_error := "AI request failed (no error message)"
+					end
 				end
 			end
 		end
@@ -202,12 +262,15 @@ feature -- Enhancement
 feature {NONE} -- Implementation
 
 	get_text_for_chapter (a_chapter: SPEECH_CHAPTER; segments: LIST [SPEECH_SEGMENT]): STRING_32
-			-- Get concatenated text for segments in chapter.
+			-- Get concatenated text for segments that OVERLAP with chapter.
+			-- Uses overlap detection (not strict containment) to capture
+			-- segments that cross chapter boundaries.
 		do
 			create Result.make (1000)
 			across segments as seg loop
-				if seg.start_time >= a_chapter.start_time and
-				   seg.end_time <= a_chapter.end_time then
+				-- Include segment if it overlaps with chapter time range
+				if seg.end_time > a_chapter.start_time and
+				   seg.start_time < a_chapter.end_time then
 					Result.append (seg.text)
 					Result.append_character (' ')
 				end

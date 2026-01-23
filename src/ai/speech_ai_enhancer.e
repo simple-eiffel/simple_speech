@@ -159,8 +159,10 @@ feature -- Correction
 			l_prompt.append ("Fix any transcription errors, especially domain-specific terminology that may have been misheard. ")
 			l_prompt.append ("For example, if this is about '")
 			l_prompt.append (a_topic_hint.to_string_32)
-			l_prompt.append ("', correct related terms that Whisper may have transcribed incorrectly. ")
-			l_prompt.append ("Keep the same line structure (one segment per line). Only output the corrected text, no explanations:%N%N")
+			l_prompt.append ("', correct related terms that Whisper may have transcribed incorrectly.%N%N")
+			l_prompt.append ("CRITICAL: Output EXACTLY ")
+			l_prompt.append (a_segments.count.out)
+			l_prompt.append (" lines, one per input line. NO blank lines. NO explanations. NO preamble. Just the corrected text:%N%N")
 			l_prompt.append (l_text)
 
 			-- Call AI with enhanced system prompt
@@ -177,21 +179,27 @@ feature -- Correction
 				until
 					a_segments.after or i > l_lines.count
 				loop
-					if a_segments.item.has_speaker then
-						-- Preserve speaker info from original segment
-						Result.extend (create {SPEECH_SEGMENT}.make_with_speaker (
-							l_lines.i_th (i),
-							a_segments.item.start_time,
-							a_segments.item.end_time,
-							a_segments.item.speaker_id,
-							a_segments.item.speaker_label_or_default
-						))
+					-- Use corrected text if non-empty, otherwise keep original
+					if i <= l_lines.count and then not l_lines.i_th (i).is_empty then
+						if a_segments.item.has_speaker then
+							-- Preserve speaker info from original segment
+							Result.extend (create {SPEECH_SEGMENT}.make_with_speaker (
+								l_lines.i_th (i),
+								a_segments.item.start_time,
+								a_segments.item.end_time,
+								a_segments.item.speaker_id,
+								a_segments.item.speaker_label_or_default
+							))
+						else
+							Result.extend (create {SPEECH_SEGMENT}.make (
+								l_lines.i_th (i),
+								a_segments.item.start_time,
+								a_segments.item.end_time
+							))
+						end
 					else
-						Result.extend (create {SPEECH_SEGMENT}.make (
-							l_lines.i_th (i),
-							a_segments.item.start_time,
-							a_segments.item.end_time
-						))
+						-- Empty line from AI - keep original segment
+						Result.extend (a_segments.item.twin)
 					end
 					a_segments.forth
 					i := i + 1
@@ -226,8 +234,10 @@ feature -- Correction
 
 			-- Build prompt
 			create l_prompt.make (500)
-			l_prompt.append ("Fix any transcription errors, typos, or grammatical issues in the following text. ")
-			l_prompt.append ("Keep the same line structure (one segment per line). Only output the corrected text, no explanations:%N%N")
+			l_prompt.append ("Fix any transcription errors, typos, or grammatical issues in the following text.%N%N")
+			l_prompt.append ("CRITICAL: Output EXACTLY ")
+			l_prompt.append (a_segments.count.out)
+			l_prompt.append (" lines, one per input line. NO blank lines. NO explanations. NO preamble. Just the corrected text:%N%N")
 			l_prompt.append (l_text)
 
 			-- Call AI
@@ -244,21 +254,27 @@ feature -- Correction
 				until
 					a_segments.after or i > l_lines.count
 				loop
-					if a_segments.item.has_speaker then
-						-- Preserve speaker info from original segment
-						Result.extend (create {SPEECH_SEGMENT}.make_with_speaker (
-							l_lines.i_th (i),
-							a_segments.item.start_time,
-							a_segments.item.end_time,
-							a_segments.item.speaker_id,
-							a_segments.item.speaker_label_or_default
-						))
+					-- Use corrected text if non-empty, otherwise keep original
+					if i <= l_lines.count and then not l_lines.i_th (i).is_empty then
+						if a_segments.item.has_speaker then
+							-- Preserve speaker info from original segment
+							Result.extend (create {SPEECH_SEGMENT}.make_with_speaker (
+								l_lines.i_th (i),
+								a_segments.item.start_time,
+								a_segments.item.end_time,
+								a_segments.item.speaker_id,
+								a_segments.item.speaker_label_or_default
+							))
+						else
+							Result.extend (create {SPEECH_SEGMENT}.make (
+								l_lines.i_th (i),
+								a_segments.item.start_time,
+								a_segments.item.end_time
+							))
+						end
 					else
-						Result.extend (create {SPEECH_SEGMENT}.make (
-							l_lines.i_th (i),
-							a_segments.item.start_time,
-							a_segments.item.end_time
-						))
+						-- Empty line from AI - keep original segment
+						Result.extend (a_segments.item.twin)
 					end
 					a_segments.forth
 					i := i + 1

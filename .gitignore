@@ -40,3 +40,4 @@ installer_output/
 # Clib object files
 Clib/*.obj
 lib/
+sherpa-onnx/test_audio.wav

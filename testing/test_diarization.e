@@ -194,13 +194,9 @@ feature -- Tests
 
 			create l_file.make_with_name (l_test_video)
 			if not l_file.exists then
-				-- Try a different test video location
-				l_test_video := "D:\priv\voxcraft\test_media\rogan_hancock_podcast.mp4"
-				create l_file.make_with_name (l_test_video)
-			end
-
-			if not l_file.exists then
-				print ("  SKIP: Test video not found%N")
+				-- No external fallback - tests must use local samples only
+				print ("  SKIP: Test video not found at " + l_test_video.to_string_8 + "%N")
+				print ("        Place test_video.mp4 in testing/samples/ directory%N")
 			else
 				create l_diar.make (l_seg_model, l_emb_model)
 				if not l_diar.is_initialized then
