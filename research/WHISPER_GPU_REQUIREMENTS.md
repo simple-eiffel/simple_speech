@@ -1,5 +1,8 @@
 # Whisper & CrisperWhisper: GPU Requirements Research
 
+
+**Date**: 2025-12-31
+
 **Date:** 2025-12-31
 **Status:** Complete
 **Relevance:** simple_speech uses whisper.cpp; this documents hardware requirements
