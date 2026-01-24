@@ -1,0 +1,344 @@
+note
+	description: "[
+				SIMPLE_SPEECH - Main facade for speech-to-text operations.
+		
+				Swiss Army knife speech-to-text library with:
+				- File transcription (WAV)
+				- PCM sample transcription
+				- Multi-language support (99+ via whisper)
+				- Configurable threading
+				- Optional translation to English
+		
+				Example:
+					speech: SIMPLE_SPEECH
+					create speech.make ("models/ggml-base.en.bin")
+					if speech.is_valid then
+						segments := speech.transcribe_file ("audio.wav")
+						across segments as seg loop
+							print (seg.text + "%N")
+						end
+					end
+		
+				Architecture:
+				- Uses SPEECH_ENGINE abstraction for loose coupling
+				- Default engine: WHISPER_ENGINE (whisper.cpp)
+				- Engine can be injected for testing or alternative backends
+		
+				CQS Pattern:
+				- Commands (procedures): set_language, set_threads, set_translate
+				- Fluent queries: with_language, with_threads, with_translate
+	]"
+	author: "Larry Rix"
+	date: "$Date$"
+	revision: "$Revision$"
+
+class interface
+	SIMPLE_SPEECH
+
+create 
+	make (a_model_path: READABLE_STRING_GENERAL)
+			-- Create with default WHISPER_ENGINE.
+		require
+			path_not_empty: not a_model_path.is_empty
+		ensure
+			engine_set: engine /= Void
+
+	make_with_engine (an_engine: SPEECH_ENGINE)
+			-- Create with custom engine (for testing or alternative backends).
+		require
+			engine_not_void: an_engine /= Void
+		ensure
+			engine_set: engine = an_engine
+
+feature -- Access
+
+	generating_type: TYPE [detachable SIMPLE_SPEECH]
+			-- Type of current object
+			-- (type of which it is a direct instance)
+			-- (from ANY)
+		ensure -- from ANY
+			generating_type_not_void: Result /= Void
+
+	generator: STRING_8
+			-- Name of current object's generating class
+			-- (base class of the type of which it is a direct instance)
+			-- (from ANY)
+		ensure -- from ANY
+			generator_not_void: Result /= Void
+			generator_not_empty: not Result.is_empty
+	
+feature -- Comparison
+
+	frozen deep_equal (a: detachable ANY; b: like arg #1): BOOLEAN
+			-- Are `a` and `b` either both void
+			-- or attached to isomorphic object structures?
+			-- (from ANY)
+		ensure -- from ANY
+			instance_free: class
+			shallow_implies_deep: standard_equal (a, b) implies Result
+			both_or_none_void: (a = Void) implies (Result = (b = Void))
+			same_type: (Result and (a /= Void)) implies (b /= Void and then a.same_type (b))
+			symmetric: Result implies deep_equal (b, a)
+
+	frozen equal (a: detachable ANY; b: like arg #1): BOOLEAN
+			-- Are `a` and `b` either both void or attached
+			-- to objects considered equal?
+			-- (from ANY)
+		ensure -- from ANY
+			instance_free: class
+			definition: Result = (a = Void and b = Void) or else ((a /= Void and b /= Void) and then a.is_equal (b))
+
+	frozen is_deep_equal alias "≡≡≡" (other: SIMPLE_SPEECH): BOOLEAN
+			-- Are `Current` and `other` attached to isomorphic object structures?
+			-- (from ANY)
+		require -- from ANY
+			other_not_void: other /= Void
+		ensure -- from ANY
+			shallow_implies_deep: standard_is_equal (other) implies Result
+			same_type: Result implies same_type (other)
+			symmetric: Result implies other.is_deep_equal (Current)
+
+	is_equal (other: SIMPLE_SPEECH): BOOLEAN
+			-- Is `other` attached to an object considered
+			-- equal to current object?
+			-- (from ANY)
+		require -- from ANY
+			other_not_void: other /= Void
+		ensure -- from ANY
+			symmetric: Result implies other ~ Current
+			consistent: standard_is_equal (other) implies Result
+
+	frozen standard_equal (a: detachable ANY; b: like arg #1): BOOLEAN
+			-- Are `a` and `b` either both void or attached to
+			-- field-by-field identical objects of the same type?
+			-- Always uses default object comparison criterion.
+			-- (from ANY)
+		ensure -- from ANY
+			instance_free: class
+			definition: Result = (a = Void and b = Void) or else ((a /= Void and b /= Void) and then a.standard_is_equal (b))
+
+	frozen standard_is_equal alias "≜" (other: SIMPLE_SPEECH): BOOLEAN
+			-- Is `other` attached to an object of the same type
+			-- as current object, and field-by-field identical to it?
+			-- (from ANY)
+		require -- from ANY
+			other_not_void: other /= Void
+		ensure -- from ANY
+			same_type: Result implies same_type (other)
+			symmetric: Result implies other.standard_is_equal (Current)
+	
+feature -- Status report
+
+	conforms_to (other: ANY): BOOLEAN
+			-- Does type of current object conform to type
+			-- of `other` (as per Eiffel: The Language, chapter 13)?
+			-- (from ANY)
+		require -- from ANY
+			other_not_void: other /= Void
+
+	same_type (other: ANY): BOOLEAN
+			-- Is type of current object identical to type of `other`?
+			-- (from ANY)
+		require -- from ANY
+			other_not_void: other /= Void
+		ensure -- from ANY
+			definition: Result = (conforms_to (other) and other.conforms_to (Current))
+	
+feature -- Duplication
+
+	copy (other: SIMPLE_SPEECH)
+			-- Update current object using fields of object attached
+			-- to `other`, so as to yield equal objects.
+			-- (from ANY)
+		require -- from ANY
+			other_not_void: other /= Void
+			type_identity: same_type (other)
+		ensure -- from ANY
+			is_equal: Current ~ other
+
+	frozen deep_copy (other: SIMPLE_SPEECH)
+			-- Effect equivalent to that of:
+			--		`copy` (`other` . `deep_twin`)
+			-- (from ANY)
+		require -- from ANY
+			other_not_void: other /= Void
+		ensure -- from ANY
+			deep_equal: deep_equal (Current, other)
+
+	frozen deep_twin: SIMPLE_SPEECH
+			-- New object structure recursively duplicated from Current.
+			-- (from ANY)
+		ensure -- from ANY
+			deep_twin_not_void: Result /= Void
+			deep_equal: deep_equal (Current, Result)
+
+	frozen standard_copy (other: SIMPLE_SPEECH)
+			-- Copy every field of `other` onto corresponding field
+			-- of current object.
+			-- (from ANY)
+		require -- from ANY
+			other_not_void: other /= Void
+			type_identity: same_type (other)
+		ensure -- from ANY
+			is_standard_equal: standard_is_equal (other)
+
+	frozen standard_twin: SIMPLE_SPEECH
+			-- New object field-by-field identical to `other`.
+			-- Always uses default copying semantics.
+			-- (from ANY)
+		ensure -- from ANY
+			standard_twin_not_void: Result /= Void
+			equal: standard_equal (Result, Current)
+
+	frozen twin: SIMPLE_SPEECH
+			-- New object equal to `Current`
+			-- `twin` calls `copy`; to change copying/twinning semantics, redefine `copy`.
+			-- (from ANY)
+		ensure -- from ANY
+			twin_not_void: Result /= Void
+			is_equal: Result ~ Current
+	
+feature -- Basic operations
+
+	frozen default: detachable SIMPLE_SPEECH
+			-- Default value of object's type
+			-- (from ANY)
+
+	frozen default_pointer: POINTER
+			-- Default value of type `POINTER`
+			-- (Avoid the need to write `p`.`default` for
+			-- some `p` of type `POINTER`.)
+			-- (from ANY)
+		ensure -- from ANY
+			instance_free: class
+
+	default_rescue
+			-- Process exception for routines with no Rescue clause.
+			-- (Default: do nothing.)
+			-- (from ANY)
+
+	frozen do_nothing
+			-- Execute a null action.
+			-- (from ANY)
+		ensure -- from ANY
+			instance_free: class
+	
+feature -- Cleanup
+
+	dispose
+			-- Release all resources.
+	
+feature -- Configuration Commands
+
+	set_language (a_language: READABLE_STRING_GENERAL)
+			-- Set source language (e.g., "en", "es", "auto").
+		require
+			language_not_empty: not a_language.is_empty
+
+	set_threads (a_count: INTEGER_32)
+			-- Set number of CPU threads.
+		require
+			positive: a_count > 0
+
+	set_translate (a_translate: BOOLEAN)
+			-- Enable/disable translation to English.
+	
+feature -- Configuration Fluent
+
+	with_language (a_language: READABLE_STRING_GENERAL): like Current
+			-- Fluent: set source language and return Current.
+		require
+			language_not_empty: not a_language.is_empty
+		ensure
+			result_is_current: Result = Current
+
+	with_threads (a_count: INTEGER_32): like Current
+			-- Fluent: set thread count and return Current.
+		require
+			positive: a_count > 0
+		ensure
+			result_is_current: Result = Current
+
+	with_translate (a_translate: BOOLEAN): like Current
+			-- Fluent: set translate mode and return Current.
+		ensure
+			result_is_current: Result = Current
+	
+feature -- Operations
+
+	transcribe_file (a_wav_path: READABLE_STRING_GENERAL): ARRAYED_LIST [SPEECH_SEGMENT]
+			-- Transcribe WAV file to segments.
+		require
+			valid: is_valid
+			path_not_empty: not a_wav_path.is_empty
+		ensure
+			result_exists: Result /= Void
+
+	transcribe_pcm (a_samples: ARRAY [REAL_32]; a_sample_rate: INTEGER_32): ARRAYED_LIST [SPEECH_SEGMENT]
+			-- Transcribe raw PCM samples.
+		require
+			valid: is_valid
+			samples_not_empty: not a_samples.is_empty
+			valid_rate: a_sample_rate > 0
+		ensure
+			result_exists: Result /= Void
+	
+feature -- Output
+
+	Io: STD_FILES
+			-- Handle to standard file setup
+			-- (from ANY)
+		ensure -- from ANY
+			instance_free: class
+			io_not_void: Result /= Void
+
+	out: STRING_8
+			-- New string containing terse printable representation
+			-- of current object
+			-- (from ANY)
+		ensure -- from ANY
+			out_not_void: Result /= Void
+
+	print (o: detachable ANY)
+			-- Write terse external representation of `o`
+			-- on standard output.
+			-- (from ANY)
+		ensure -- from ANY
+			instance_free: class
+
+	frozen tagged_out: STRING_8
+			-- New string containing terse printable representation
+			-- of current object
+			-- (from ANY)
+		ensure -- from ANY
+			tagged_out_not_void: Result /= Void
+	
+feature -- Platform
+
+	Operating_environment: OPERATING_ENVIRONMENT
+			-- Objects available from the operating system
+			-- (from ANY)
+		ensure -- from ANY
+			instance_free: class
+			operating_environment_not_void: Result /= Void
+	
+feature -- Status
+
+	is_model_loaded: BOOLEAN
+			-- Is a model loaded?
+
+	is_valid: BOOLEAN
+			-- Is the speech engine ready to transcribe?
+
+	last_error: detachable STRING_32
+			-- Last error message.
+	
+invariant
+	engine_exists: engine /= Void
+
+		-- from ANY
+	reflexive_equality: standard_is_equal (Current)
+	reflexive_conformance: conforms_to (Current)
+
+end -- class SIMPLE_SPEECH
+
