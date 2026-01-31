@@ -53,6 +53,7 @@
 		<library name="simple_ai_client" location="D:\prod\simple_ai_client\simple_ai_client.ecf"/>
 		<library name="simple_ffmpeg" location="D:\prod\simple_ffmpeg\simple_ffmpeg.ecf"/>
 		<library name="simple_json" location="D:\prod\simple_json\simple_json.ecf"/>
+		<library name="simple_onnx" location="D:\prod\simple_onnx\simple_onnx.ecf"/>
 		<library name="simple_process" location="D:\prod\simple_process\simple_process.ecf"/>
 		<library name="time" location="$ISE_LIBRARY\library\time\time.ecf"/>
 		<cluster name="src" location=".\src\" recursive="true"/>
