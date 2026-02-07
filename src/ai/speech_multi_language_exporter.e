@@ -164,9 +164,9 @@ feature -- Export
 
 				if enhancer.has_error then
 					if attached enhancer.last_error as e then
-						set_error ("Translation failed for " + lang + ": " + e)
+						set_error ({STRING_32} "Translation failed for " + lang + {STRING_32} ": " + e)
 					else
-						set_error ("Translation failed for " + lang)
+						set_error ({STRING_32} "Translation failed for " + lang)
 					end
 					Result := False
 				else
@@ -177,7 +177,7 @@ feature -- Export
 					if l_exporter.is_ok then
 						l_files.extend (l_path)
 					else
-						set_error ("Export failed for " + lang + ": " + l_path)
+						set_error ({STRING_32} "Export failed for " + lang + {STRING_32} ": " + l_path)
 						Result := False
 					end
 				end
@@ -198,7 +198,7 @@ feature -- Export
 
 			if enhancer.has_error then
 			if attached enhancer.last_error as e then
-				set_error ("Translation failed: " + e)
+				set_error ({STRING_32} "Translation failed: " + e)
 			else
 				set_error ("Translation failed")
 			end
@@ -209,7 +209,7 @@ feature -- Export
 
 				Result := l_exporter.is_ok
 				if not Result then
-					set_error ("Export failed: " + l_path)
+					set_error ({STRING_32} "Export failed: " + l_path)
 				end
 			end
 		end

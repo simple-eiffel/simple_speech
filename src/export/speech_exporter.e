@@ -149,7 +149,7 @@ feature -- Export Commands
 				l_exporter.set_ai_source (l_provider, l_model)
 			end
 			if not l_exporter.export_to_file (a_path) then
-				add_error ("VTT export failed: " + a_path.to_string_32)
+				add_error ({STRING_32} "VTT export failed: " + a_path.to_string_32)
 			end
 		end
 
@@ -164,7 +164,7 @@ feature -- Export Commands
 				l_exporter.set_ai_source (l_provider, l_model)
 			end
 			if not l_exporter.export_to_file (a_path) then
-				add_error ("SRT export failed: " + a_path.to_string_32)
+				add_error ({STRING_32} "SRT export failed: " + a_path.to_string_32)
 			end
 		end
 
@@ -176,7 +176,7 @@ feature -- Export Commands
 			create l_exporter.make
 			l_exporter.set_segments (segments)
 			if not l_exporter.export_to_file (a_path) then
-				add_error ("JSON export failed: " + a_path.to_string_32)
+				add_error ({STRING_32} "JSON export failed: " + a_path.to_string_32)
 			end
 		end
 
@@ -188,7 +188,7 @@ feature -- Export Commands
 			create l_exporter.make
 			l_exporter.set_segments (segments)
 			if not l_exporter.export_to_file (a_path) then
-				add_error ("TXT export failed: " + a_path.to_string_32)
+				add_error ({STRING_32} "TXT export failed: " + a_path.to_string_32)
 			end
 		end
 
@@ -201,7 +201,7 @@ feature -- Export Commands
 			l_exporter.set_segments (segments)
 			l_exporter.set_timestamps (True)
 			if not l_exporter.export_to_file (a_path) then
-				add_error ("TXT export failed: " + a_path.to_string_32)
+				add_error ({STRING_32} "TXT export failed: " + a_path.to_string_32)
 			end
 		end
 

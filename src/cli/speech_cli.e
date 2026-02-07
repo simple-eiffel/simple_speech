@@ -64,7 +64,7 @@ feature {NONE} -- Initialization
 
 			-- Print all output
 			across output_lines as line loop
-				io.put_string (line.to_string_8)
+				io.put_string_32 (line)
 				io.put_new_line
 			end
 			io.output.flush
@@ -221,7 +221,7 @@ feature {NONE} -- Argument Parsing
 					is_quiet := True
 
 				elseif arg.starts_with ("-") then
-					set_error ("Unknown option: " + arg)
+					set_error ({STRING_32} "Unknown option: " + arg)
 
 				elseif command = Void then
 					command := arg.as_lower
@@ -279,7 +279,7 @@ feature {NONE} -- Command Execution
 				elseif cmd.same_string ("help") then
 					show_help
 				else
-					set_error ("Unknown command: " + cmd + ". Use --help for usage.")
+					set_error ({STRING_32} "Unknown command: " + cmd + {STRING_32} ". Use --help for usage.")
 				end
 			else
 				show_help
@@ -294,13 +294,13 @@ feature {NONE} -- Command Execution
 			if not attached input_file as f then
 				set_error ("transcribe requires an input file")
 			else
-				log ("Loading model: " + model_path)
+				log ({STRING_32} "Loading model: " + model_path)
 				create speech.make_with_model (model_path.to_string_8)
 
 				if not speech.is_ready then
-					set_error ("Failed to load model: " + model_path)
+					set_error ({STRING_32} "Failed to load model: " + model_path)
 				else
-					log ("Transcribing: " + f)
+					log ({STRING_32} "Transcribing: " + f)
 					speech.transcribe (f.to_string_8)
 
 					if speech.has_segments then
@@ -317,7 +317,7 @@ feature {NONE} -- Command Execution
 						end
 					else
 						if attached speech.last_error as err then
-							set_error ("Transcription failed: " + err)
+							set_error ({STRING_32} "Transcription failed: " + err)
 						else
 							set_error ("Transcription produced no segments")
 						end
@@ -336,13 +336,13 @@ feature {NONE} -- Command Execution
 			elseif not attached output_path as op then
 				set_error ("export requires --output path")
 			else
-				log ("Loading model: " + model_path)
+				log ({STRING_32} "Loading model: " + model_path)
 				create speech.make_with_model (model_path.to_string_8)
 
 				if not speech.is_ready then
 					set_error ("Failed to load model")
 				else
-					log ("Transcribing: " + f)
+					log ({STRING_32} "Transcribing: " + f)
 					speech.transcribe (f.to_string_8)
 
 					if speech.has_segments then
@@ -362,13 +362,13 @@ feature {NONE} -- Command Execution
 			if not attached input_file as f then
 				set_error ("chapters requires an input file")
 			else
-				log ("Loading model: " + model_path)
+				log ({STRING_32} "Loading model: " + model_path)
 				create speech.make_with_model (model_path.to_string_8)
 
 				if not speech.is_ready then
 					set_error ("Failed to load model")
 				else
-					log ("Transcribing: " + f)
+					log ({STRING_32} "Transcribing: " + f)
 					speech.transcribe (f.to_string_8)
 
 					if speech.has_segments then
@@ -377,7 +377,7 @@ feature {NONE} -- Command Execution
 
 						output ("=== Chapters (" + speech.chapters.count.out + " found) ===")
 						across speech.chapters as ch loop
-							output ("[" + ch.formatted_start + " - " + ch.formatted_end + "] " + ch.title)
+							output ({STRING_32} "[" + ch.formatted_start + " - " + ch.formatted_end + "] " + ch.title)
 						end
 
 						-- Export if output specified
@@ -409,7 +409,7 @@ feature {NONE} -- Command Execution
 			end
 
 			if not has_error and attached input_files as files then
-				log ("Loading model: " + model_path)
+				log ({STRING_32} "Loading model: " + model_path)
 				create pipeline.make (model_path)
 
 				if not pipeline.is_ready then
@@ -436,7 +436,7 @@ feature {NONE} -- Command Execution
 					else
 						output ("=== Batch Completed with Errors ===")
 						across batch.errors as err loop
-							output ("ERROR: " + err)
+							output ({STRING_32} "ERROR: " + err)
 						end
 					end
 				end
@@ -459,13 +459,13 @@ feature {NONE} -- Command Execution
 				if not ffmpeg.is_available then
 					set_error ("FFmpeg not available in PATH")
 				else
-					log ("Loading model: " + model_path)
+					log ({STRING_32} "Loading model: " + model_path)
 					create speech.make_with_model (model_path.to_string_8)
 
 					if not speech.is_ready then
 						set_error ("Failed to load model")
 					else
-						log ("Transcribing: " + f)
+						log ({STRING_32} "Transcribing: " + f)
 						speech.transcribe (f.to_string_8)
 
 						if speech.has_segments then
@@ -476,12 +476,12 @@ feature {NONE} -- Command Execution
 
 							if embedder.embed_all (f.to_string_8, speech.segments, speech.chapters, op.to_string_8) then
 								output ("=== Embed Complete ===")
-								output ("Output: " + op)
+								output ({STRING_32} "Output: " + op)
 								output ("Segments: " + speech.segments.count.out)
 								output ("Chapters: " + speech.chapters.count.out)
 							else
 								if attached embedder.last_error as err then
-									set_error ("Embed failed: " + err)
+									set_error ({STRING_32} "Embed failed: " + err)
 								else
 									set_error ("Embed failed")
 								end
@@ -508,25 +508,25 @@ feature {NONE} -- Command Execution
 				else
 					if attached ffmpeg.probe (f.to_string_8) as info then
 						output ("=== File Info ===")
-						output ("File: " + f)
+						output ({STRING_32} "File: " + f)
 						output ("Duration: " + info.duration.out + " seconds")
 						output ("Has video: " + info.has_video.out)
 						output ("Has audio: " + info.has_audio.out)
 						if info.has_video then
 							if attached info.video_codec as vc then
-								output ("Video codec: " + vc)
+								output ({STRING_32} "Video codec: " + vc)
 							end
 							output ("Resolution: " + info.video_width.out + "x" + info.video_height.out)
 						end
 						if info.has_audio then
 							if attached info.audio_codec as ac then
-								output ("Audio codec: " + ac)
+								output ({STRING_32} "Audio codec: " + ac)
 							end
 							output ("Sample rate: " + info.audio_sample_rate.out)
 							output ("Channels: " + info.audio_channels.out)
 						end
 					else
-						set_error ("Could not probe file: " + f)
+						set_error ({STRING_32} "Could not probe file: " + f)
 					end
 				end
 			end
@@ -555,7 +555,7 @@ feature {NONE} -- Export Helpers
 				output ("Exported: " + a_path + " (" + output_format.as_upper + ")")
 			else
 				across exporter.errors as err loop
-					output ("Export error: " + err)
+					output ({STRING_32} "Export error: " + err)
 				end
 			end
 		end

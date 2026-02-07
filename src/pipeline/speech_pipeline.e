@@ -132,9 +132,9 @@ feature -- Processing
 			-- Probe video
 			video_info := ffmpeg.probe (a_video_path)
 			if not attached video_info as vi then
-				set_error ("Failed to probe video: " + a_video_path.to_string_32)
+				set_error ({STRING_32} "Failed to probe video: " + a_video_path.to_string_32)
 			elseif not vi.has_audio then
-				set_error ("Video has no audio track: " + a_video_path.to_string_32)
+				set_error ({STRING_32} "Video has no audio track: " + a_video_path.to_string_32)
 			else
 				-- Extract audio to temp WAV (16kHz mono for whisper)
 				l_temp_wav := generate_temp_path
@@ -156,7 +156,7 @@ feature -- Processing
 
 						l_speech.dispose
 					else
-						set_error ("Failed to load whisper model: " + model_path)
+						set_error ({STRING_32} "Failed to load whisper model: " + model_path)
 					end
 
 					-- Cleanup temp file
@@ -206,7 +206,7 @@ feature -- Export
 			l_exporter.export_vtt (a_path)
 			Result := l_exporter.is_ok
 			if not Result then
-				set_error ("VTT export failed: " + a_path.to_string_32)
+				set_error ({STRING_32} "VTT export failed: " + a_path.to_string_32)
 			end
 		end
 
@@ -221,7 +221,7 @@ feature -- Export
 			l_exporter.export_srt (a_path)
 			Result := l_exporter.is_ok
 			if not Result then
-				set_error ("SRT export failed: " + a_path.to_string_32)
+				set_error ({STRING_32} "SRT export failed: " + a_path.to_string_32)
 			end
 		end
 
@@ -236,7 +236,7 @@ feature -- Export
 			l_exporter.export_json (a_path)
 			Result := l_exporter.is_ok
 			if not Result then
-				set_error ("JSON export failed: " + a_path.to_string_32)
+				set_error ({STRING_32} "JSON export failed: " + a_path.to_string_32)
 			end
 		end
 
@@ -288,7 +288,7 @@ feature {NONE} -- Implementation
 				ffmpeg.execute (l_cmd)
 				Result := ffmpeg.was_successful
 				if not Result then
-					set_error ("Audio extraction failed: " + a_video.to_string_32)
+					set_error ({STRING_32} "Audio extraction failed: " + a_video.to_string_32)
 				end
 			else
 				set_error ("FFmpeg not available")
