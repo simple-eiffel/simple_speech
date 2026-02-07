@@ -41,3 +41,6 @@ installer_output/
 Clib/*.obj
 lib/
 sherpa-onnx/test_audio.wav
+*.melted
+*.epr
+*.log
