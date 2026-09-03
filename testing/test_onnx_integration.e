@@ -160,18 +160,25 @@ feature -- Tests: ONNX Foundation Classes
 	test_onnx_session_creation
 			-- Test ONNX session creation with model.
 		local
+			l_onnx: SIMPLE_ONNX
 			l_model: ONNX_MODEL
 			l_session: ONNX_SESSION
 		do
+				-- The facade owns the single ONNX Runtime environment.
+			create l_onnx.make
 			l_model := create {ONNX_MODEL}.make ("test.onnx")
 			l_model.set_input_count (1)
 			l_model.set_output_count (1)
 
-			create l_session.make (l_model)
+				-- ONNX_SESSION.make takes that environment as its second
+				-- argument; this is the same pairing SIMPLE_ONNX.create_session
+				-- and SIMPLE_ONNX.load_model use in production.
+			create l_session.make (l_model, l_onnx.environment)
 
 			check
 				session_created: l_session /= Void
 				model_set: l_session.model = l_model
+				environment_set: l_session.environment = l_onnx.environment
 				default_cpu_provider: l_session.provider.name.same_string ("CPUExecutionProvider")
 				default_optimization: l_session.optimization_level = 2
 			end
