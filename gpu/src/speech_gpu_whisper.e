@@ -96,7 +96,7 @@ feature -- Commands
 			last_decode_ms := now_ms - l_start
 			if l_rc = 0 then
 				last_error := {STRING_32} ""
-				collect_words
+				collect_words (a_count / 16_000)
 			else
 				last_error := {STRING_32} "decode failed (" + l_rc.out + ")"
 				create last_words.make (0)
@@ -104,6 +104,7 @@ feature -- Commands
 			end
 		ensure
 			ordered: across last_words as ic all ic.t0 >= 0 and ic.t1 >= ic.t0 end
+			inside_the_audio: across last_words as ic all ic.t1 <= a_count / 16_000 end
 			timed: last_decode_ms >= 0
 		end
 
@@ -129,9 +130,11 @@ feature -- Commands
 
 feature {NONE} -- Words
 
-	collect_words
+	collect_words (a_limit: REAL_64)
 			-- Rebuild words from tokens: a token starting with a space starts a word. Bytes are
 			-- gathered first and decoded per word, since a token may split a UTF-8 character.
+			-- Times are clamped to `a_limit' seconds: whisper pads every window to 30 s and now
+			-- and then stamps the last word past the audio it was given.
 		local
 			l_seg, l_tok, l_segments, l_tokens, l_n, i: INTEGER
 			l_buffer: MANAGED_POINTER
@@ -158,13 +161,13 @@ feature {NONE} -- Words
 							l_word.wipe_out
 						end
 						if l_word.is_empty then
-							l_t0 := c_token_t0 (context, l_seg, l_tok).max (0.0)
+							l_t0 := c_token_t0 (context, l_seg, l_tok).max (0.0).min (a_limit)
 							l_p := c_token_p (context, l_seg, l_tok)
 						else
 							l_p := l_p.min (c_token_p (context, l_seg, l_tok))
 						end
 						l_word.append (l_piece)
-						l_t1 := c_token_t1 (context, l_seg, l_tok)
+						l_t1 := c_token_t1 (context, l_seg, l_tok).min (a_limit)
 					end
 					l_tok := l_tok + 1
 				end

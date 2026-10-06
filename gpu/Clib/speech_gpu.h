@@ -55,7 +55,8 @@ static int speech_gpu_whisper_decode(void* l_ctx, const float* l_samples, int l_
     l_fp = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
     l_fp.n_threads = l_threads > 0 ? l_threads : 4;
     l_fp.no_context = true;                 /* spike gotcha 1 */
-    l_fp.single_segment = false;
+    l_fp.single_segment = false;            /* true stamped the last word past the window end */
+    l_fp.max_tokens = 40;                   /* 3 s of speech is ~15 words; caps repetition loops ("8, 8, 8 ...") that took 650 ms */
     l_fp.print_special = false;
     l_fp.print_progress = false;
     l_fp.print_realtime = false;
