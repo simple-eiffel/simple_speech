@@ -44,3 +44,6 @@ sherpa-onnx/test_audio.wav
 *.melted
 *.epr
 *.log
+
+# GPU sub-library build output
+gpu/EIFGENs/
