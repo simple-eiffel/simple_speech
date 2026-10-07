@@ -21,6 +21,7 @@ feature {NONE} -- Initialization
 			run_test (agent t.test_already_read_prompt_is_harmless, "already_read_prompt_is_harmless")
 			run_test (agent t.test_passage_pass_fits_the_analysis_budget, "passage_pass_fits_the_analysis_budget")
 			run_test (agent t.test_vad_hears_speech_and_silence, "vad_hears_speech_and_silence")
+			run_test (agent t.test_vad_scores_a_whole_recording, "vad_scores_a_whole_recording")
 			run_test (agent t.test_vad_streaming_cost, "vad_streaming_cost")
 			say ("%NResults: " + passed.out + " passed, " + failed.out + " failed%N")
 		end

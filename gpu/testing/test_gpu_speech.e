@@ -114,6 +114,26 @@ feature -- Voice activity
 			v.close
 		end
 
+	test_vad_scores_a_whole_recording
+			-- One pass over the read test (144 s): a probability per 32 ms chunk, speech at 4.5-5.0 s,
+			-- silence in the instructed pause (19.17-22.85 s), and fast enough for analysis.
+		local
+			v: SPEECH_SILERO_VAD
+			l_start, l_ms: REAL_64
+		do
+			create v.make (Vad_model)
+			l_start := now_ms
+			v.score_all (recording, 0, recording.count)
+			l_ms := now_ms - l_start
+			print ("    [vad-all] " + v.probabilities.count.out + " chunks in " + l_ms.truncated_to_integer.out + " ms%N")
+			assert_true ("a chunk per 512 samples", v.probabilities.count >= recording.count // 512 - 1)
+			print ("    [vad-all] max 4.5-5.0 s: " + window_max (v.probabilities, 4.5, 5.0).out + "; mean 20-22 s: " + window_mean (v.probabilities, 20.0, 22.0).out + "%N")
+			assert_true ("speech in 4.5-5.0 s", window_max (v.probabilities, 4.5, 5.0) > 0.5)
+			assert_true ("silence in 20-22 s", window_mean (v.probabilities, 20.0, 22.0) < 0.2)
+			assert_true ("under 10 s for 144 s of audio", l_ms < 10_000.0)
+			v.close
+		end
+
 	test_vad_streaming_cost
 			-- A half-second trailing window every 32 ms frame over 10 s costs a few ms per call.
 		local
@@ -146,6 +166,30 @@ feature {NONE} -- Fixtures
 			-- One resident model for the whole run.
 		once
 			create Result.make (Model, True)
+		end
+
+	window_max (a_p: SPECIAL [REAL_64]; a_from, a_to: REAL_64): REAL_64
+			-- Highest chunk probability between `a_from' and `a_to' seconds.
+		local
+			i: INTEGER
+		do
+			from i := (a_from * Rate / 512).truncated_to_integer until i > (a_to * Rate / 512).truncated_to_integer or i >= a_p.count loop
+				Result := Result.max (a_p [i])
+				i := i + 1
+			end
+		end
+
+	window_mean (a_p: SPECIAL [REAL_64]; a_from, a_to: REAL_64): REAL_64
+			-- Mean chunk probability between `a_from' and `a_to' seconds.
+		local
+			i, n: INTEGER
+		do
+			from i := (a_from * Rate / 512).truncated_to_integer until i > (a_to * Rate / 512).truncated_to_integer or i >= a_p.count loop
+				Result := Result + a_p [i]
+				n := n + 1
+				i := i + 1
+			end
+			Result := Result / n.max (1)
 		end
 
 	recording: SPECIAL [REAL_32]

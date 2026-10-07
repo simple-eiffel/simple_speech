@@ -135,4 +135,20 @@ static double speech_gpu_vad_last_probability(void* l_vctx, const float* l_sampl
     return (double)whisper_vad_probs(l_v)[l_count - 1];
 }
 
+/* Score l_n samples in one pass (the model's recurrent state runs through the
+   whole buffer); answers the number of 512-sample chunks scored, or -1. Read
+   each with speech_gpu_vad_prob. For full recordings (analysis). */
+static int speech_gpu_vad_detect(void* l_vctx, const float* l_samples, int l_n) {
+    struct whisper_vad_context* l_v = (struct whisper_vad_context*)l_vctx;
+    if (!l_v || !l_samples || l_n <= 0) return -1;
+    if (!whisper_vad_detect_speech(l_v, l_samples, l_n)) return -1;
+    return whisper_vad_n_probs(l_v);
+}
+
+static double speech_gpu_vad_prob(void* l_vctx, int l_index) {
+    struct whisper_vad_context* l_v = (struct whisper_vad_context*)l_vctx;
+    if (!l_v || l_index < 0 || l_index >= whisper_vad_n_probs(l_v)) return 0.0;
+    return (double)whisper_vad_probs(l_v)[l_index];
+}
+
 #endif

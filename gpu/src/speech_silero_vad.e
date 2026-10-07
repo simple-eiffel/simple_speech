@@ -44,6 +44,12 @@ feature -- Access
 
 	last_error: STRING_32
 
+	probabilities: SPECIAL [REAL_64]
+			-- Speech probability of every 512-sample chunk scored by the last `score_all'.
+		attribute
+			create Result.make_empty (0)
+		end
+
 feature -- Status
 
 	is_loaded: BOOLEAN
@@ -81,6 +87,39 @@ feature -- Commands
 			probability_range: last_probability >= 0 and last_probability <= 1
 		end
 
+	score_all (a_samples: SPECIAL [REAL_32]; a_offset, a_count: INTEGER)
+			-- Score samples `a_offset' .. `a_offset' + `a_count' - 1 (16 kHz mono) in one pass, the
+			-- recurrent state running through all of them; every chunk's probability goes to
+			-- `probabilities'. For whole recordings (analysis); live use keeps `score'.
+		require
+			loaded: is_loaded
+			range_inside: a_offset >= 0 and a_count >= Chunk_samples and a_offset + a_count <= a_samples.count
+		local
+			l_buffer: MANAGED_POINTER
+			i, l_n: INTEGER
+		do
+			create l_buffer.make (a_count * 4)
+			from i := 0 until i >= a_count loop
+				l_buffer.put_real_32 (a_samples [a_offset + i], i * 4)
+				i := i + 1
+			end
+			l_n := c_detect (context, l_buffer.item, a_count)
+			if l_n >= 0 then
+				create probabilities.make_filled (0.0, l_n)
+				from i := 0 until i >= l_n loop
+					probabilities [i] := c_prob (context, i).max (0.0).min (1.0)
+					i := i + 1
+				end
+				last_error := {STRING_32} ""
+			else
+				create probabilities.make_empty (0)
+				last_error := {STRING_32} "voice detection failed"
+			end
+		ensure
+			about_one_per_chunk: last_error.is_empty implies probabilities.count >= a_count // Chunk_samples - 1
+			in_range: across probabilities as ic all ic >= 0 and ic <= 1 end
+		end
+
 	close
 		do
 			if is_loaded then
@@ -105,6 +144,16 @@ feature {NONE} -- Externals
 	c_free (a_ctx: POINTER)
 		external "C inline use %"speech_gpu.h%""
 		alias "speech_gpu_vad_free($a_ctx);"
+		end
+
+	c_detect (a_ctx, a_samples: POINTER; a_count: INTEGER): INTEGER
+		external "C blocking inline use %"speech_gpu.h%""
+		alias "return speech_gpu_vad_detect($a_ctx, (const float*)$a_samples, $a_count);"
+		end
+
+	c_prob (a_ctx: POINTER; a_index: INTEGER): REAL_64
+		external "C inline use %"speech_gpu.h%""
+		alias "return speech_gpu_vad_prob($a_ctx, $a_index);"
 		end
 
 	c_last_probability (a_ctx, a_samples: POINTER; a_count: INTEGER): REAL_64
