@@ -75,10 +75,52 @@ feature -- Commands
 
 	decode (a_samples: SPECIAL [REAL_32]; a_count: INTEGER; a_prompt: READABLE_STRING_GENERAL)
 			-- Recognize the first `a_count' samples of `a_samples' (16 kHz mono), biased by
-			-- `a_prompt' (text already spoken; may be empty).
+			-- `a_prompt' (text already spoken; may be empty). Tuned for live windows of a few
+			-- seconds: at most `Window_max_tokens' per segment.
 		require
 			loaded: is_loaded
 			count_valid: a_count > 0 and a_count <= a_samples.count
+		do
+			decode_limited (a_samples, a_count, a_prompt, Window_max_tokens)
+		ensure
+			ordered: across last_words as ic all ic.t0 >= 0 and ic.t1 >= ic.t0 end
+			inside_the_audio: across last_words as ic all ic.t1 <= a_count / 16_000 end
+			timed: last_decode_ms >= 0
+		end
+
+	decode_passage (a_samples: SPECIAL [REAL_32]; a_count: INTEGER; a_prompt: READABLE_STRING_GENERAL)
+			-- Recognize a passage of up to 30 s (a full-file pass cut at silences): as `decode',
+			-- but with room for a long segment (`Passage_max_tokens'). `a_prompt' is the text of
+			-- the passages before it.
+		require
+			loaded: is_loaded
+			count_valid: a_count > 0 and a_count <= a_samples.count
+			at_most_30_s: a_count <= 30 * 16_000
+		do
+			decode_limited (a_samples, a_count, a_prompt, Passage_max_tokens)
+		ensure
+			ordered: across last_words as ic all ic.t0 >= 0 and ic.t1 >= ic.t0 end
+			inside_the_audio: across last_words as ic all ic.t1 <= a_count / 16_000 end
+			timed: last_decode_ms >= 0
+		end
+
+feature -- Constants
+
+	Window_max_tokens: INTEGER = 40
+			-- Per segment, for live windows: 3 s of speech is ~15 words, and a repetition loop
+			-- ("8, 8, 8 ...") had taken a decode to 650 ms.
+
+	Passage_max_tokens: INTEGER = 160
+			-- Per segment, for passages: 30 s of fast speech is ~90 words (~120 tokens).
+
+feature {NONE} -- Decoding
+
+	decode_limited (a_samples: SPECIAL [REAL_32]; a_count: INTEGER; a_prompt: READABLE_STRING_GENERAL; a_max_tokens: INTEGER)
+			-- Decode with at most `a_max_tokens' per segment.
+		require
+			loaded: is_loaded
+			count_valid: a_count > 0 and a_count <= a_samples.count
+			cap_positive: a_max_tokens > 0
 		local
 			l_buffer: MANAGED_POINTER
 			l_prompt: C_STRING
@@ -92,7 +134,7 @@ feature -- Commands
 			end
 			create l_prompt.make (utf_8 (a_prompt))
 			l_start := now_ms
-			l_rc := c_decode (context, l_buffer.item, a_count, l_prompt.item, thread_count)
+			l_rc := c_decode (context, l_buffer.item, a_count, l_prompt.item, thread_count, a_max_tokens)
 			last_decode_ms := now_ms - l_start
 			if l_rc = 0 then
 				last_error := {STRING_32} ""
@@ -107,6 +149,8 @@ feature -- Commands
 			inside_the_audio: across last_words as ic all ic.t1 <= a_count / 16_000 end
 			timed: last_decode_ms >= 0
 		end
+
+feature -- Settings and lifecycle
 
 	set_thread_count (a_count: INTEGER)
 		require
@@ -222,9 +266,9 @@ feature {NONE} -- Externals
 		alias "speech_gpu_whisper_free($a_ctx);"
 		end
 
-	c_decode (a_ctx, a_samples: POINTER; a_count: INTEGER; a_prompt: POINTER; a_threads: INTEGER): INTEGER
+	c_decode (a_ctx, a_samples: POINTER; a_count: INTEGER; a_prompt: POINTER; a_threads, a_max_tokens: INTEGER): INTEGER
 		external "C blocking inline use %"speech_gpu.h%""
-		alias "return speech_gpu_whisper_decode($a_ctx, (const float*)$a_samples, $a_count, (const char*)$a_prompt, $a_threads);"
+		alias "return speech_gpu_whisper_decode($a_ctx, (const float*)$a_samples, $a_count, (const char*)$a_prompt, $a_threads, $a_max_tokens);"
 		end
 
 	c_n_segments (a_ctx: POINTER): INTEGER
