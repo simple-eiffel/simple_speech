@@ -47,16 +47,17 @@ static void speech_gpu_whisper_free(void* l_ctx) {
     if (l_ctx) whisper_free((struct whisper_context*)l_ctx);
 }
 
-/* Decode l_n samples (16 kHz mono float). Answers 0 on success. */
+/* Decode l_n samples (16 kHz mono float), at most l_max_tokens per segment
+   (live 3 s windows use 40; full-file passages more). Answers 0 on success. */
 static int speech_gpu_whisper_decode(void* l_ctx, const float* l_samples, int l_n,
-        const char* l_prompt_utf8, int l_threads) {
+        const char* l_prompt_utf8, int l_threads, int l_max_tokens) {
     struct whisper_full_params l_fp;
     if (!l_ctx || !l_samples || l_n <= 0) return -1;
     l_fp = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
     l_fp.n_threads = l_threads > 0 ? l_threads : 4;
     l_fp.no_context = true;                 /* spike gotcha 1 */
     l_fp.single_segment = false;            /* true stamped the last word past the window end */
-    l_fp.max_tokens = 40;                   /* 3 s of speech is ~15 words; caps repetition loops ("8, 8, 8 ...") that took 650 ms */
+    l_fp.max_tokens = l_max_tokens > 0 ? l_max_tokens : 40;   /* caps repetition loops ("8, 8, 8 ...") that took 650 ms */
     l_fp.print_special = false;
     l_fp.print_progress = false;
     l_fp.print_realtime = false;
