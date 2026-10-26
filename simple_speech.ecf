@@ -113,7 +113,6 @@
 			<concurrency support="scoop"/>
 		</capability>
 		<library name="simple_vision" location="$SIMPLE_EIFFEL\simple_vision\simple_vision.ecf"/>
-		<library name="vision2" location="$ISE_LIBRARY\library\vision2\vision2.ecf"/>
 		<cluster name="app" location=".\app\"/>
 	</target>
 	<target name="cli" extends="simple_speech">

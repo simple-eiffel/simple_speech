@@ -514,7 +514,7 @@ feature {NONE} -- UI Updates
 			if attached segment_list as al_segment_list then
 				al_segment_list.clear
 				across transcribed_segments as seg loop
-					al_segment_list.add_item (format_timestamp (seg.start_time) + " - " + seg.text)
+					al_segment_list.add_item (format_timestamp (seg.start_time).to_string_32 + {STRING_32} " - " + seg.text)
 				end
 			end
 		end
@@ -525,7 +525,7 @@ feature {NONE} -- UI Updates
 			if attached chapter_list as al_chapter_list then
 				al_chapter_list.clear
 				across transcribed_chapters as ch loop
-					al_chapter_list.add_item (format_timestamp (ch.start_time) + " - " + ch.title)
+					al_chapter_list.add_item (format_timestamp (ch.start_time).to_string_32 + {STRING_32} " - " + ch.title)
 				end
 			end
 		end
