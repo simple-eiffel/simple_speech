@@ -220,22 +220,22 @@ feature {NONE} -- Implementation
 			-- Check Python (try 'py' first for Windows, then 'python')
 			create l_proc.make
 			l_proc.execute ({STRING_32} "py --version")
-			has_python := l_proc.was_successful
+			has_python := l_proc.was_successful and l_proc.last_exit_code = 0
 			if not has_python then
 				create l_proc.make
 				l_proc.execute ({STRING_32} "python --version")
-				has_python := l_proc.was_successful
+				has_python := l_proc.was_successful and l_proc.last_exit_code = 0
 			end
 			
 			-- Check whisperx package (use py -c or python -c)
 			if has_python then
 				create l_proc.make
 				l_proc.execute ({STRING_32} "py -c %"import whisperx; print('ok')%"")
-				has_whisperx := l_proc.was_successful
+				has_whisperx := l_proc.was_successful and l_proc.last_exit_code = 0
 				if not has_whisperx then
 					create l_proc.make
 					l_proc.execute ({STRING_32} "python -c %"import whisperx; print('ok')%"")
-					has_whisperx := l_proc.was_successful
+					has_whisperx := l_proc.was_successful and l_proc.last_exit_code = 0
 				end
 			else
 				has_whisperx := False
