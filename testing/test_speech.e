@@ -28,9 +28,9 @@ feature -- Tests
 			result_speech: SIMPLE_SPEECH
 		do
 			create speech.make ("models/test.bin")
-			result_speech := speech.set_language ("en")
-			                       .set_threads (4)
-			                       .set_translate (True)
+			result_speech := speech.with_language ("en")
+			                       .with_threads (4)
+			                       .with_translate (True)
 			check fluent_self: result_speech = speech end
 		end
 

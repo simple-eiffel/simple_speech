@@ -162,6 +162,10 @@ feature -- Test: Memory Monitor
 			create monitor.make
 			assert_true ("monitor created", monitor /= Void)
 			assert_true ("has memory info", monitor.get_available_memory_mb > 0)
+			assert_true ("total memory known", monitor.get_total_memory > 0)
+			assert_true ("available within total", monitor.get_available_memory <= monitor.get_total_memory)
+			assert_true ("this process uses memory", monitor.get_process_memory > 0)
+			assert_true ("process within total", monitor.get_process_memory < monitor.get_total_memory)
 		end
 
 feature -- Test: ONNX Foundation (via simple_onnx integration)

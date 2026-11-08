@@ -47,3 +47,4 @@ sherpa-onnx/test_audio.wav
 
 # GPU sub-library build output
 gpu/EIFGENs/
+Clib/*.o

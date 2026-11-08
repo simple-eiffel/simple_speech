@@ -113,8 +113,8 @@ feature -- Tests
 		do
 			print ("%NTest: Initialization with real models%N")
 
-			l_seg_model := models_directory + "\sherpa-onnx-pyannote-segmentation-3-0\model.onnx"
-			l_emb_model := models_directory + "\3dspeaker_speech_eres2net_base_sv_zh-cn_3dspeaker_16k.onnx"
+			l_seg_model := models_directory + "/sherpa-onnx-pyannote-segmentation-3-0/model.onnx"
+			l_emb_model := models_directory + "/3dspeaker_speech_eres2net_base_sv_zh-cn_3dspeaker_16k.onnx"
 
 			create l_diar.make (l_seg_model, l_emb_model)
 
@@ -141,9 +141,9 @@ feature -- Tests
 		do
 			print ("%NTest: Diarize WAV file%N")
 
-			l_seg_model := models_directory + "\sherpa-onnx-pyannote-segmentation-3-0\model.onnx"
-			l_emb_model := models_directory + "\3dspeaker_speech_eres2net_base_sv_zh-cn_3dspeaker_16k.onnx"
-			l_test_wav := test_samples_directory + "\test_audio.wav"
+			l_seg_model := models_directory + "/sherpa-onnx-pyannote-segmentation-3-0/model.onnx"
+			l_emb_model := models_directory + "/3dspeaker_speech_eres2net_base_sv_zh-cn_3dspeaker_16k.onnx"
+			l_test_wav := test_samples_directory + "/test_audio.wav"
 
 			create l_file.make_with_name (l_test_wav)
 			if not l_file.exists then
@@ -188,9 +188,9 @@ feature -- Tests
 		do
 			print ("%NTest: Diarize video file (MP4)%N")
 
-			l_seg_model := models_directory + "\sherpa-onnx-pyannote-segmentation-3-0\model.onnx"
-			l_emb_model := models_directory + "\3dspeaker_speech_eres2net_base_sv_zh-cn_3dspeaker_16k.onnx"
-			l_test_video := test_samples_directory + "\test_video.mp4"
+			l_seg_model := models_directory + "/sherpa-onnx-pyannote-segmentation-3-0/model.onnx"
+			l_emb_model := models_directory + "/3dspeaker_speech_eres2net_base_sv_zh-cn_3dspeaker_16k.onnx"
+			l_test_video := test_samples_directory + "/test_video.mp4"
 
 			create l_file.make_with_name (l_test_video)
 			if not l_file.exists then
@@ -230,22 +230,38 @@ feature -- Tests
 feature {NONE} -- Helpers
 
 	models_directory: STRING_32
-			-- VoxCraft models directory.
+			-- VoxCraft models directory, the rule SHERPA_DIARIZATION.default_models_directory uses.
 		local
 			l_env: EXECUTION_ENVIRONMENT
 		do
 			create l_env
-			if attached l_env.item ("PROGRAMDATA") as pd then
-				Result := pd.to_string_32 + "\VoxCraft\models"
+			if {PLATFORM}.is_windows then
+				if attached l_env.item ("PROGRAMDATA") as pd then
+					Result := pd.to_string_32 + "/VoxCraft/models"
+				else
+					Result := "C:/ProgramData/VoxCraft/models"
+				end
+			elseif attached l_env.item ("VOXCRAFT_MODELS") as l_set then
+				Result := l_set.to_string_32
+			elseif attached l_env.item ("HOME") as l_home then
+				Result := l_home.to_string_32 + "/.local/share/VoxCraft/models"
 			else
-				Result := "C:\ProgramData\VoxCraft\models"
+				Result := "VoxCraft/models"
 			end
 		end
 
 	test_samples_directory: STRING_32
-			-- Test samples directory.
+			-- Test samples directory, under $SIMPLE_EIFFEL.
+		local
+			l_env: EXECUTION_ENVIRONMENT
 		do
-			Result := "D:\prod\simple_speech\testing\samples"
+			create l_env
+			if attached l_env.item ("SIMPLE_EIFFEL") as l_root then
+				Result := l_root.to_string_32
+			else
+				Result := l_env.current_working_path.parent.name.to_string_32
+			end
+			Result.append ({STRING_32} "/simple_speech/testing/samples")
 		end
 
 end

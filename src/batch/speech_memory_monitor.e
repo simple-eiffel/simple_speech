@@ -217,46 +217,30 @@ feature -- Reporting
 			Result.append (recommend_batch_size.out)
 		end
 
-feature {NONE} -- C externals (Windows API)
+feature {NONE} -- C externals (speech_platform.h)
 
 	c_get_available_memory: NATURAL_64
-			-- Get available physical memory via Windows API.
+			-- Physical memory free for use, in bytes.
 		external
-			"C inline use <windows.h>"
+			"C inline use %"speech_platform.h%""
 		alias
-			"[
-				MEMORYSTATUSEX statex;
-				statex.dwLength = sizeof(statex);
-				GlobalMemoryStatusEx(&statex);
-				return (EIF_NATURAL_64)statex.ullAvailPhys;
-			]"
+			"return (EIF_NATURAL_64) speech_available_memory ();"
 		end
 
 	c_get_total_memory: NATURAL_64
-			-- Get total physical memory via Windows API.
+			-- Installed physical memory, in bytes.
 		external
-			"C inline use <windows.h>"
+			"C inline use %"speech_platform.h%""
 		alias
-			"[
-				MEMORYSTATUSEX statex;
-				statex.dwLength = sizeof(statex);
-				GlobalMemoryStatusEx(&statex);
-				return (EIF_NATURAL_64)statex.ullTotalPhys;
-			]"
+			"return (EIF_NATURAL_64) speech_total_memory ();"
 		end
 
 	c_get_process_memory: NATURAL_64
-			-- Get current process memory usage via Windows API.
+			-- This process's resident memory, in bytes.
 		external
-			"C inline use <windows.h>, <psapi.h>"
+			"C inline use %"speech_platform.h%""
 		alias
-			"[
-				PROCESS_MEMORY_COUNTERS pmc;
-				if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc))) {
-					return (EIF_NATURAL_64)pmc.WorkingSetSize;
-				}
-				return 0;
-			]"
+			"return (EIF_NATURAL_64) speech_process_memory ();"
 		end
 
 invariant
