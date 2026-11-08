@@ -63,9 +63,25 @@ feature {NONE} -- Test Runners
 			print ("%N--- MEMORY_MONITOR Tests ---%N")
 			run_test (agent lib_tests.test_memory_monitor, "test_memory_monitor")
 
+			-- Whisper through SIMPLE_SPEECH (TEST_SPEECH was never run here before)
+			print ("%N--- SIMPLE_SPEECH Tests ---%N")
+			run_speech_tests
+
 			-- Diarization tests
 			print ("%N--- SHERPA_DIARIZATION Tests ---%N")
 			run_diarization_tests
+		end
+
+	run_speech_tests
+			-- Run TEST_SPEECH: real transcription when models/ggml-base.en.bin is present.
+		local
+			l_speech_tests: TEST_SPEECH
+		do
+			create l_speech_tests
+			run_test (agent l_speech_tests.test_creation_stub, "test_creation_stub")
+			run_test (agent l_speech_tests.test_fluent_config, "test_fluent_config")
+			run_test (agent l_speech_tests.test_wav_reader, "test_wav_reader")
+			run_test (agent l_speech_tests.test_real_transcription, "test_real_transcription")
 		end
 
 	run_diarization_tests

@@ -49,6 +49,26 @@
 				<platform value="windows"/>
 			</condition>
 		</external_linker_flag>
+		<external_include location="$(SHERPA_ONNX_DIR)/include">
+			<condition>
+				<platform excluded_value="windows"/>
+			</condition>
+		</external_include>
+		<external_object location="$(SIMPLE_EIFFEL)/simple_speech/Clib/whisper_wrapper.o">
+			<condition>
+				<platform excluded_value="windows"/>
+			</condition>
+		</external_object>
+		<external_linker_flag value="-L/opt/homebrew/lib -lwhisper -lggml -lggml-base -L$(SHERPA_ONNX_DIR)/lib -lsherpa-onnx-c-api -Wl,-rpath,$(SHERPA_ONNX_DIR)/lib">
+			<condition>
+				<platform value="macintosh"/>
+			</condition>
+		</external_linker_flag>
+		<external_linker_flag value="-lwhisper -lggml -lggml-base -L$(SHERPA_ONNX_DIR)/lib -lsherpa-onnx-c-api -Wl,-rpath,$(SHERPA_ONNX_DIR)/lib">
+			<condition>
+				<platform value="unix"/>
+			</condition>
+		</external_linker_flag>
 		<library name="base" location="$ISE_LIBRARY\library\base\base.ecf"/>
 		<library name="simple_ai_client" location="$SIMPLE_EIFFEL/simple_ai_client/simple_ai_client.ecf"/>
 		<library name="simple_ffmpeg" location="$SIMPLE_EIFFEL/simple_ffmpeg/simple_ffmpeg.ecf"/>

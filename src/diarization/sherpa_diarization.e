@@ -53,8 +53,8 @@ feature {NONE} -- Initialization
 			l_models_dir: STRING_32
 		do
 			l_models_dir := default_models_directory
-			make (l_models_dir + "\sherpa-onnx-pyannote-segmentation-3-0\model.onnx",
-			      l_models_dir + "\3dspeaker_speech_eres2net_base_sv_zh-cn_3dspeaker_16k.onnx")
+			make (l_models_dir + separator + "sherpa-onnx-pyannote-segmentation-3-0" + separator + "model.onnx",
+			      l_models_dir + separator + "3dspeaker_speech_eres2net_base_sv_zh-cn_3dspeaker_16k.onnx")
 		end
 
 
@@ -350,7 +350,7 @@ feature -- Operations
 					create Result.make (0)
 				else
 					-- Generate unique temp file path
-					l_temp_wav := temp_directory + {STRING_32} "\sherpa_diar_" + c_time_ms.out + ".wav"
+					l_temp_wav := temp_directory + separator + {STRING_32} "sherpa_diar_" + c_time_ms.out + ".wav"
 					
 					if extract_audio_to_wav (l_ffmpeg, a_media_path, l_temp_wav) then
 						Result := diarize (l_temp_wav)
@@ -427,6 +427,9 @@ feature -- Audio extraction
 				Result := t.to_string_32
 			elseif attached l_env.item ("TMP") as t then
 				Result := t.to_string_32
+			elseif attached l_env.item ("TMPDIR") as t then
+				Result := t.to_string_32
+				Result.prune_all_trailing ('/')
 			else
 				Result := {STRING_32} "."
 			end
@@ -437,9 +440,9 @@ feature -- Audio extraction
 	c_time_ms: INTEGER_64
 			-- Current time in milliseconds for unique temp file names.
 		external
-			"C inline use <windows.h>"
+			"C inline use %"speech_platform.h%""
 		alias
-			"return (EIF_INTEGER_64)GetTickCount64();"
+			"return (EIF_INTEGER_64) speech_time_ms ();"
 		end
 
 
@@ -511,17 +514,32 @@ feature {NONE} -- Implementation
 		end
 
 	default_models_directory: STRING_32
-			-- Default directory for VoxCraft models.
+			-- Default directory for VoxCraft models: ProgramData on Windows; elsewhere
+			-- $VOXCRAFT_MODELS when set, else ~/.local/share/VoxCraft/models.
 		local
 			l_env: EXECUTION_ENVIRONMENT
 		do
 			create l_env
-			if attached l_env.item ("PROGRAMDATA") as pd then
-				create Result.make_from_string (pd.to_string_32)
-				Result.append ({STRING_32} "\VoxCraft\models")
+			if {PLATFORM}.is_windows then
+				if attached l_env.item ("PROGRAMDATA") as pd then
+					create Result.make_from_string (pd.to_string_32)
+					Result.append ({STRING_32} "\VoxCraft\models")
+				else
+					Result := {STRING_32} "C:\ProgramData\VoxCraft\models"
+				end
+			elseif attached l_env.item ("VOXCRAFT_MODELS") as l_set then
+				Result := l_set.to_string_32
+			elseif attached l_env.item ("HOME") as l_home then
+				Result := l_home.to_string_32 + {STRING_32} "/.local/share/VoxCraft/models"
 			else
-				Result := {STRING_32} "C:\ProgramData\VoxCraft\models"
+				Result := {STRING_32} "VoxCraft/models"
 			end
+		end
+
+	separator: STRING_32
+			-- This platform's directory separator.
+		once
+			create Result.make_filled ({OPERATING_ENVIRONMENT}.directory_separator, 1)
 		end
 
 feature {NONE} -- C Externals
