@@ -31,7 +31,7 @@ feature {NONE} -- Initialization
 			create ffmpeg.make
 			create segments.make (0)
 			temp_counter := 0
-			-- If ffmpeg not found in PATH, try common Windows location
+			-- If ffmpeg is not on PATH, try the usual places for this platform
 			if not ffmpeg.is_available then
 				try_common_ffmpeg_paths
 			end
@@ -65,6 +65,19 @@ feature -- Status
 			-- Is pipeline ready for processing?
 		do
 			Result := ffmpeg.is_available
+		end
+
+	can_process (a_path: READABLE_STRING_GENERAL): BOOLEAN
+			-- Can `process_video' handle `a_path'? Anything with ffmpeg; a WAV file
+			-- (read and resampled directly) without it.
+		do
+			Result := is_ready or else is_wav (a_path)
+		end
+
+	is_wav (a_path: READABLE_STRING_GENERAL): BOOLEAN
+			-- Does `a_path' name a WAV file, which needs no ffmpeg?
+		do
+			Result := a_path.count > 4 and then a_path.substring (a_path.count - 3, a_path.count).as_lower.same_string ({STRING_32} ".wav")
 		end
 
 	has_error: BOOLEAN
@@ -116,16 +129,37 @@ feature -- Configuration Fluent
 feature -- Processing
 
 	process_video (a_video_path: READABLE_STRING_GENERAL): like segments
-			-- Process video file and return transcription segments.
-			-- Extracts audio, transcribes, cleans up temp files.
+			-- Process an audio or video file and return transcription segments.
+			-- A WAV file goes straight to whisper (WAV_READER makes it 16 kHz mono); anything
+			-- else, or a WAV the reader cannot read, goes through ffmpeg first.
+		require
+			can_process: can_process (a_video_path)
+			path_not_empty: not a_video_path.is_empty
+		do
+			clear_error
+			create segments.make (10)
+			Result := segments
+			if is_wav (a_video_path) then
+				transcribe_wav (a_video_path)
+				Result := segments
+			end
+			if not is_wav (a_video_path) or else (has_error and is_ready) then
+				clear_error
+				Result := through_ffmpeg (a_video_path)
+			end
+		ensure
+			result_is_segments: Result = segments
+			reason_given: Result.is_empty implies has_error
+		end
+
+	through_ffmpeg (a_video_path: READABLE_STRING_GENERAL): like segments
+			-- Probe, extract 16 kHz mono audio, transcribe, clean up.
 		require
 			ready: is_ready
-			path_not_empty: not a_video_path.is_empty
 		local
 			l_temp_wav: STRING_32
 			l_speech: SIMPLE_SPEECH
 		do
-			clear_error
 			create segments.make (10)
 			Result := segments
 
@@ -163,8 +197,38 @@ feature -- Processing
 					cleanup_temp_file (l_temp_wav)
 				end
 			end
+			if Result.is_empty and not has_error then
+				set_error ({STRING_32} "No speech found in: " + a_video_path.to_string_32)
+			end
 		ensure
 			result_is_segments: Result = segments
+		end
+
+	transcribe_wav (a_wav_path: READABLE_STRING_GENERAL)
+			-- Transcribe a WAV file directly into `segments', no ffmpeg.
+		local
+			l_speech: SIMPLE_SPEECH
+		do
+			create l_speech.make (model_path)
+			if l_speech.is_valid then
+				if attached language as lang then
+					l_speech.set_language (lang)
+				end
+				if translate then
+					l_speech.set_translate (True)
+				end
+				segments := l_speech.transcribe_file (a_wav_path)
+				if segments.is_empty then
+					if attached l_speech.last_error as al_error then
+						set_error ({STRING_32} "Could not read WAV file: " + al_error.to_string_32)
+					else
+						set_error ({STRING_32} "No speech found in: " + a_wav_path.to_string_32)
+					end
+				end
+				l_speech.dispose
+			else
+				set_error ({STRING_32} "Failed to load whisper model: " + model_path)
+			end
 		end
 
 	process_video_to_vtt (a_video_path, a_vtt_path: READABLE_STRING_GENERAL): BOOLEAN
@@ -338,28 +402,41 @@ feature {NONE} -- Implementation
 		end
 
 	try_common_ffmpeg_paths
-			-- Try common FFmpeg locations and environment variables.
+			-- Try FFMPEG_PATH, then the usual places for this platform: Windows folders,
+			-- Homebrew on macOS (Apple silicon and Intel), and the system on Linux.
 		local
 			l_env: EXECUTION_ENVIRONMENT
 			l_file: RAW_FILE
 			l_paths: ARRAYED_LIST [STRING_32]
 			l_found: BOOLEAN
-			l_ffprobe: STRING_32
+			l_ffprobe, l_name, l_sep: STRING_32
 		do
 			create l_env
-			create l_paths.make (5)
+			create l_paths.make (8)
+			if {PLATFORM}.is_windows then
+				l_name := {STRING_32} "ffmpeg.exe"
+				l_sep := {STRING_32} "\"
+			else
+				l_name := {STRING_32} "ffmpeg"
+				l_sep := {STRING_32} "/"
+			end
 
 			-- Check FFMPEG_PATH environment variable first
 			if attached l_env.item ("FFMPEG_PATH") as env_path then
-				l_paths.extend (env_path.to_string_32 + "\ffmpeg.exe")
-				l_paths.extend (env_path.to_string_32 + "\bin\ffmpeg.exe")
+				l_paths.extend (env_path.to_string_32 + l_sep + l_name)
+				l_paths.extend (env_path.to_string_32 + l_sep + {STRING_32} "bin" + l_sep + l_name)
 			end
 
-			-- Common Windows locations
-			l_paths.extend ("D:\ffmpeg\bin\ffmpeg.exe")
-			l_paths.extend ("D:\ffmpeg\ffmpeg.exe")
-			l_paths.extend ("C:\ffmpeg\bin\ffmpeg.exe")
-			l_paths.extend ("C:\Program Files\ffmpeg\bin\ffmpeg.exe")
+			if {PLATFORM}.is_windows then
+				l_paths.extend ("D:\ffmpeg\bin\ffmpeg.exe")
+				l_paths.extend ("D:\ffmpeg\ffmpeg.exe")
+				l_paths.extend ("C:\ffmpeg\bin\ffmpeg.exe")
+				l_paths.extend ("C:\Program Files\ffmpeg\bin\ffmpeg.exe")
+			else
+				l_paths.extend ("/opt/homebrew/bin/ffmpeg")
+				l_paths.extend ("/usr/local/bin/ffmpeg")
+				l_paths.extend ("/usr/bin/ffmpeg")
+			end
 
 			from l_paths.start until l_paths.after or l_found loop
 				create l_file.make_with_name (l_paths.item)
@@ -367,7 +444,8 @@ feature {NONE} -- Implementation
 					ffmpeg.set_ffmpeg_path (l_paths.item)
 					-- Also set ffprobe path (same directory)
 					l_ffprobe := l_paths.item.twin
-					l_ffprobe.replace_substring_all ("ffmpeg.exe", "ffprobe.exe")
+					l_ffprobe.replace_substring (if {PLATFORM}.is_windows then {STRING_32} "ffprobe.exe" else {STRING_32} "ffprobe" end,
+						l_ffprobe.count - l_name.count + 1, l_ffprobe.count)
 					create l_file.make_with_name (l_ffprobe)
 					if l_file.exists then
 						ffmpeg.set_ffprobe_path (l_ffprobe)

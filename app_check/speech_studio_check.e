@@ -24,6 +24,8 @@ feature {NONE} -- Initialization
 			create l_driver
 			l_studio.window.show
 			l_driver.pump_until_idle (300)
+			print ("  window: " + l_studio.window.width.out + " x " + l_studio.window.height.out + "%N")
+			check_that ("picture at the start", l_driver.snapshot (l_studio.window, create {PATH}.make_from_string ("speech_studio_start.png")))
 			l_studio.load_file (create {PATH}.make_from_string ("testing/samples/test_audio.wav"))
 			check_that ("transcribe enabled after loading", l_studio.btn_transcribe.is_enabled)
 			check_that ("exports disabled before a transcript", not l_studio.btn_export_vtt.is_enabled)
@@ -53,6 +55,7 @@ feature {NONE} -- Initialization
 			if l_studio.segment_list.count > 0 then
 				print ("  first line: " + l_studio.segment_list.i_th (1).to_string_8 + "%N")
 			end
+			print ("  window: " + l_studio.window.width.out + " x " + l_studio.window.height.out + "%N")
 			check_that ("picture", l_driver.snapshot (l_studio.window, create {PATH}.make_from_string ("speech_studio.png")))
 
 				-- Cancel: the window is ready at once; the job's results are dropped

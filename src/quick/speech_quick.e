@@ -35,9 +35,15 @@ feature {NONE} -- Initialization
 feature -- Status
 
 	is_ready: BOOLEAN
-			-- Is the pipeline ready for transcription?
+			-- Is the pipeline ready for any audio or video (is ffmpeg available)?
 		do
 			Result := pipeline.is_ready
+		end
+
+	can_transcribe (a_file: READABLE_STRING_GENERAL): BOOLEAN
+			-- Can `transcribe' handle `a_file'? Anything with ffmpeg; a WAV file without it.
+		do
+			Result := pipeline.can_process (a_file)
 		end
 
 	has_segments: BOOLEAN
@@ -123,21 +129,22 @@ feature -- Fluent API
 		end
 
 	transcribe (a_file: STRING)
-			-- Transcribe audio or video file.
+			-- Transcribe audio or video file. On failure `last_error' says why.
 		require
-			ready: is_ready
+			can_transcribe: can_transcribe (a_file)
 			file_not_empty: not a_file.is_empty
 		do
 			last_error := Void
 			current_input := a_file
-			if attached pipeline.process_video (a_file) as segs then
-				internal_segments.wipe_out
-				across segs as seg loop
-					internal_segments.extend (seg)
-				end
-			else
+			internal_segments.wipe_out
+			across pipeline.process_video (a_file) as seg loop
+				internal_segments.extend (seg)
+			end
+			if pipeline.has_error then
 				last_error := pipeline.last_error
 			end
+		ensure
+			reason_given: not has_segments implies attached last_error
 		end
 
 	then_detect_chapters: like Current
