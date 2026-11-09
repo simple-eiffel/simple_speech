@@ -122,8 +122,8 @@ feature -- Commands
 			report_progress (a_handler, 0, "Initializing...")
 			create l_speech.make_with_model (model_path)
 
-			if not l_speech.is_ready then
-				report_error (a_handler, "Failed to initialize speech engine")
+			if not l_speech.can_transcribe (l_file_path) then
+				report_error (a_handler, "This file needs ffmpeg, which was not found (install ffmpeg or set FFMPEG_PATH; a WAV file needs no ffmpeg)")
 				is_running := False
 			else
 				report_progress (a_handler, 10, "Probing media file...")

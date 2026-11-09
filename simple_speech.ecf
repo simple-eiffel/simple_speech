@@ -132,8 +132,20 @@
 		<capability>
 			<concurrency support="scoop"/>
 		</capability>
-		<library name="simple_vision" location="$SIMPLE_EIFFEL\simple_vision\simple_vision.ecf"/>
+		<library name="simple_gui" location="$SIMPLE_EIFFEL\simple_gui\simple_gui.ecf"/>
 		<cluster name="app" location=".\app\"/>
+	</target>
+	<target name="speech_studio_check" extends="simple_speech">
+		<description>Drives Speech Studio through a real transcription and a cancel (run from this folder).</description>
+		<root class="SPEECH_STUDIO_CHECK" feature="make"/>
+		<setting name="console_application" value="true"/>
+		<setting name="executable_name" value="speech_studio_check"/>
+		<capability>
+			<concurrency support="scoop"/>
+		</capability>
+		<library name="simple_gui" location="$SIMPLE_EIFFEL\simple_gui\simple_gui.ecf"/>
+		<cluster name="app" location=".\app\"/>
+		<cluster name="app_check" location=".\app_check\"/>
 	</target>
 	<target name="cli" extends="simple_speech">
 		<root class="SPEECH_CLI" feature="make"/>

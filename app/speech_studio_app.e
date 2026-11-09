@@ -3,630 +3,415 @@ note
 	author: "Larry Rix"
 	date: "2025-12-29"
 	design: "[
-		Uses simple_vision for UI, SCOOP for async transcription.
+		simple_gui (since 2026-11-09; it was simple_vision): native controls on each
+		platform - GTK 4 on Linux, AppKit on macOS, simple_widgets on Windows.
 
-		SCOOP Architecture:
-		- UI runs in main processor (responsive)
-		- Transcription runs in separate processor (non-blocking)
-		- Progress callbacks update UI via SCOOP message passing
+		SCOOP: the window runs on the GUI processor and never waits on a job.
+		SPEECH_STUDIO_RELAY, on its own processor, owns the transcriber and hands progress,
+		segments, chapters and the outcome back through the GUI's mailbox plus a GUI_WAKE
+		(simple_gui's rule: workers never call into the GUI).
+
+		Cancel: simple_speech's transcriber only notices a cancel between the phases of a
+		job, and a cancel request would wait behind the running job. So Cancel returns the
+		window to ready at once and the job's results are dropped when it ends; Transcribe
+		comes back when it has.
 	]"
 
 class
 	SPEECH_STUDIO_APP
 
 inherit
-	SV_APPLICATION
-		redefine
-			make
-		end
-
-	SPEECH_PROGRESS_HANDLER
-		undefine
-			default_create, copy
-		end
+	SPEECH_STUDIO_TAGS
 
 create
-	make
+	make, make_studio
 
 feature {NONE} -- Initialization
 
 	make
-			-- Create and launch Speech Studio.
+			-- Build Speech Studio and run it.
 		do
-			Precursor
-			create sv.make
-			sv.set_dark_mode (False)
-			create transcriber.make
+			make_studio
+			window.show
+			app.run
+		end
+
+	make_studio
+			-- Build Speech Studio without running it (checks drive it with GUI_TEST_DRIVER).
+		do
+			create app.make ("Speech Studio", "org.simple-eiffel.speech-studio")
 			create transcribed_segments.make (0)
 			create transcribed_chapters.make (0)
-			create_state_machine
-			create_main_window
-			if attached main_window as al_window then
-				al_window.show_now
-			end
-			launch
+			create current_file.make_empty
+			create current_file_name.make_empty
+			create window.make ("Speech Studio", 1200, 800)
+			create btn_open.make ("Open File")
+			create btn_transcribe.make ("Transcribe")
+			create btn_cancel.make ("Cancel")
+			create btn_export_vtt.make ("Export VTT")
+			create btn_export_srt.make ("Export SRT")
+			create btn_export_json.make ("Export JSON")
+			create lbl_file_name.make ("No file loaded")
+			create lbl_file_info.make ("")
+			create lbl_status.make ("Open a file to begin transcription")
+			create progress.make
+			create chapter_list.make
+			create segment_list.make
+			create status_bar.make
+			create relay.make (app.mailbox)
+			lay_out
+			app.message_actions.extend (agent on_message)
+		end
+
+	lay_out
+			-- Toolbar, file and chapters on the left, progress and transcript on the right,
+			-- a status bar below.
+		local
+			l_toolbar: GUI_TOOLBAR
+			l_split: GUI_SPLITTER
+			l_left, l_right: GUI_STACK
+			l_file_heading, l_chapters_heading, l_transcript_heading: GUI_LABEL
+		do
+			create l_toolbar.make
+			l_toolbar.extend (btn_open)
+			l_toolbar.extend (btn_transcribe)
+			l_toolbar.extend (btn_cancel)
+			l_toolbar.add_separator
+			l_toolbar.extend (btn_export_vtt)
+			l_toolbar.extend (btn_export_srt)
+			l_toolbar.extend (btn_export_json)
+			btn_open.click_actions.extend (agent on_open_file)
+			btn_transcribe.click_actions.extend (agent on_transcribe)
+			btn_cancel.click_actions.extend (agent on_cancel)
+			btn_export_vtt.click_actions.extend (agent on_export_vtt)
+			btn_export_srt.click_actions.extend (agent on_export_srt)
+			btn_export_json.click_actions.extend (agent on_export_json)
+			window.set_toolbar (l_toolbar)
+
+			create l_file_heading.make ("File")
+			create l_chapters_heading.make ("Chapters")
+			create l_left.make_vertical
+			l_left.set_spacing (6)
+			l_left.extend (l_file_heading)
+			l_left.extend (lbl_file_name)
+			l_left.extend (lbl_file_info)
+			l_left.extend (l_chapters_heading)
+			l_left.extend_stretching (chapter_list)
+			chapter_list.set_accessible_label ("Chapters")
+
+			create l_transcript_heading.make ("Transcript")
+			create l_right.make_vertical
+			l_right.set_spacing (6)
+			l_right.extend (lbl_status)
+			l_right.extend (progress)
+			l_right.extend (l_transcript_heading)
+			l_right.extend_stretching (segment_list)
+			progress.set_accessible_label ("Progress")
+			segment_list.set_accessible_label ("Transcript")
+
+			create l_split.make_horizontal
+			l_split.set_first (l_left)
+			l_split.set_second (l_right)
+			l_split.set_position (300)
+			window.set_content (l_split)
+
+			status_bar.set_text ("Ready")
+			window.set_status_bar (status_bar)
+			show_buttons
 		end
 
 feature -- Access
 
-	sv: SV_QUICK
-			-- Widget factory.
+	app: GUI_APPLICATION
 
-	transcriber: separate SPEECH_ASYNC_TRANSCRIBER
-			-- Async transcription processor (SCOOP separate).
+	window: GUI_WINDOW
+
+	relay: separate SPEECH_STUDIO_RELAY
+			-- Runs transcription jobs on its own processor.
 
 	transcribed_segments: ARRAYED_LIST [SPEECH_SEGMENT]
-			-- Segments from last transcription.
+			-- Segments from the last transcription.
 
 	transcribed_chapters: ARRAYED_LIST [SPEECH_CHAPTER]
-			-- Chapters from last transcription.
+			-- Chapters from the last transcription.
 
-	state: detachable SV_STATE_MACHINE
-			-- UI state machine.
+	current_file: STRING_32
+			-- The loaded file's path, or empty.
 
-	current_file: detachable STRING
-			-- Currently loaded file path.
+	current_file_name: STRING_32
+			-- Its last part.
 
-	current_file_name: detachable STRING
-			-- Just the filename portion.
+	is_running: BOOLEAN
+			-- Is a job running on the relay (cancelled or not)?
 
-feature -- UI Components
+	cancel_requested: BOOLEAN
+			-- Did the user cancel the running job?
 
-	lbl_file_name: detachable SV_TEXT
-	lbl_file_info: detachable SV_TEXT
-	lbl_status: detachable SV_TEXT
-	progress: detachable SV_PROGRESS_BAR
-	segment_list: detachable SV_LIST
-	chapter_list: detachable SV_LIST
-	btn_transcribe: detachable SV_TOOLBAR_BUTTON
-	btn_cancel: detachable SV_TOOLBAR_BUTTON
-	btn_export_vtt: detachable SV_TOOLBAR_BUTTON
-	btn_export_srt: detachable SV_TOOLBAR_BUTTON
-	btn_export_json: detachable SV_TOOLBAR_BUTTON
+feature -- Controls
 
-feature {NONE} -- State Machine
+	btn_open, btn_transcribe, btn_cancel, btn_export_vtt, btn_export_srt, btn_export_json: GUI_BUTTON
 
-	create_state_machine
-			-- Create the main state machine.
-		local
-			l_machine: SV_STATE_MACHINE
-		do
-			l_machine := sv.state_machine ("main")
+	lbl_file_name, lbl_file_info, lbl_status: GUI_LABEL
 
-			-- States
-			l_machine.state ("idle").described_as ("No file loaded").do_nothing
-			l_machine.state ("file_loaded").described_as ("File ready").do_nothing
-			l_machine.state ("transcribing").described_as ("Transcription in progress").do_nothing
-			l_machine.state ("completed").described_as ("Transcript ready").do_nothing
-			l_machine.state ("error").described_as ("Error occurred").do_nothing
+	progress: GUI_PROGRESS_BAR
 
-			-- Transitions
-			l_machine.on ("file_opened").from_state ("idle").to ("file_loaded").apply.do_nothing
-			l_machine.on ("file_opened").from_state ("file_loaded").to ("file_loaded").apply.do_nothing
-			l_machine.on ("file_opened").from_state ("completed").to ("file_loaded").apply.do_nothing
-			l_machine.on ("file_opened").from_state ("error").to ("file_loaded").apply.do_nothing
+	chapter_list, segment_list: GUI_LIST
 
-			l_machine.on ("transcribe").from_state ("file_loaded").to ("transcribing").apply.do_nothing
-			l_machine.on ("transcribe").from_state ("completed").to ("transcribing").apply.do_nothing
+	status_bar: GUI_STATUS_BAR
 
-			l_machine.on ("done").from_state ("transcribing").to ("completed").apply.do_nothing
-			l_machine.on ("failed").from_state ("transcribing").to ("error").apply.do_nothing
-			l_machine.on ("cancelled").from_state ("transcribing").to ("file_loaded").apply.do_nothing
-
-			l_machine.on ("dismiss").from_state ("error").to ("idle").apply.do_nothing
-
-			l_machine.set_initial ("idle")
-			l_machine.start
-			state := l_machine
-		end
-
-feature {NONE} -- Window Construction
-
-	create_main_window
-			-- Build the main application window.
-		local
-			l_window: SV_WINDOW
-			l_toolbar: SV_TOOLBAR
-			l_main_split: SV_SPLITTER
-			l_left_panel, l_center_panel: SV_COLUMN
-			l_file_info_card, l_chapters_card, l_transcript_card: SV_CARD
-			l_status_bar: SV_STATUSBAR
-			l_list: SV_LIST
-		do
-			-- Create main window
-			l_window := sv.window ("Speech Studio").size (1200, 800)
-
-			-- Toolbar
-			l_toolbar := create_toolbar
-
-			-- Left panel: file info + chapters
-			create lbl_file_name.make_with_text ("No file loaded")
-			create lbl_file_info.make_with_text ("")
-
-			l_file_info_card := sv.card_titled ("File Info")
-			if attached lbl_file_name as al_file_name and attached lbl_file_info as al_file_info then
-				l_file_info_card := l_file_info_card.content (
-					sv.column_of (<<al_file_name, al_file_info>>).padding (10).spacing (5)
-				)
-			end
-
-			l_list := sv.list
-			chapter_list := l_list
-			l_chapters_card := sv.card_titled ("Chapters").content (l_list)
-
-			l_left_panel := sv.column_of (<<
-				l_file_info_card,
-				l_chapters_card
-			>>).padding (10).spacing (10)
-
-			-- Center panel: status + progress + segment list
-			progress := sv.progress_bar.set_minimum_height (30).no_expand
-			l_list := sv.list
-			segment_list := l_list
-			l_transcript_card := sv.card_titled ("Transcript").content (l_list)
-
-			create lbl_status.make_with_text ("Open a file to begin transcription")
-
-			if attached progress as al_progress and attached lbl_status as al_status then
-				l_center_panel := sv.column_of (<<
-					al_status,
-					al_progress,
-					l_transcript_card
-				>>).padding (10).spacing (10)
-			else
-				l_center_panel := sv.column_of (<<l_transcript_card>>).padding (10)
-			end
-
-			-- Main split
-			l_main_split := sv.horizontal_splitter
-			l_main_split := l_main_split.first (l_left_panel.set_minimum_width (280))
-			l_main_split := l_main_split.second (l_center_panel)
-
-			-- Status bar
-			l_status_bar := sv.statusbar_with ("Ready").no_expand
-
-			-- Assemble window
-			l_window := l_window.content (sv.column_of (<<l_toolbar, l_main_split, l_status_bar>>))
-
-			add_window (l_window)
-		end
-
-	create_toolbar: SV_TOOLBAR
-			-- Create the main toolbar.
-		local
-			l_toolbar: SV_TOOLBAR
-			l_button: SV_TOOLBAR_BUTTON
-		do
-			l_toolbar := sv.toolbar
-
-			-- Open File button
-			l_button := sv.toolbar_button ("Open File")
-			l_button.on_click (agent on_open_file)
-			l_toolbar.add_button (l_button)
-
-			-- Transcribe button (initially disabled)
-			l_button := sv.toolbar_button ("Transcribe")
-			l_button.on_click (agent on_transcribe)
-			l_button.disable
-			btn_transcribe := l_button
-			l_toolbar.add_button (l_button)
-
-			-- Cancel button (initially disabled)
-			l_button := sv.toolbar_button ("Cancel")
-			l_button.on_click (agent on_cancel)
-			l_button.disable
-			btn_cancel := l_button
-			l_toolbar.add_button (l_button)
-
-			-- Separator
-			l_toolbar.separator
-
-			-- Export buttons (initially disabled)
-			l_button := sv.toolbar_button ("Export VTT")
-			l_button.on_click (agent on_export_vtt)
-			l_button.disable
-			btn_export_vtt := l_button
-			l_toolbar.add_button (l_button)
-
-			l_button := sv.toolbar_button ("Export SRT")
-			l_button.on_click (agent on_export_srt)
-			l_button.disable
-			btn_export_srt := l_button
-			l_toolbar.add_button (l_button)
-
-			l_button := sv.toolbar_button ("Export JSON")
-			l_button.on_click (agent on_export_json)
-			l_button.disable
-			btn_export_json := l_button
-			l_toolbar.add_button (l_button)
-
-			Result := l_toolbar
-		end
-
-feature -- Event Handlers
+feature -- Event handlers
 
 	on_open_file
-			-- Handle Open File button click.
-		local
-			l_dialog: SV_FILE_DIALOG
-			l_path: STRING_32
 		do
-			l_dialog := sv.open_file_dialog
-			l_dialog := l_dialog.filter ("Audio/Video", "*.mp3;*.wav;*.mp4;*.mkv;*.avi;*.mov;*.ogg;*.flac;*.m4a")
-			if attached main_window as al_main_window then
-				l_dialog.show (al_main_window)
-				l_path := l_dialog.file_name
-				if not l_path.is_empty then
-					load_file (l_path.to_string_8)
-				end
+			if attached app.dialogs.open_file ("Open audio or video",
+					{ARRAY [READABLE_STRING_GENERAL]} <<"mp3", "wav", "mp4", "mkv", "avi", "mov", "ogg", "flac", "m4a">>) as al_path
+			then
+				load_file (al_path)
 			end
 		end
 
-	load_file (a_path: STRING)
+	load_file (a_path: PATH)
 			-- Load a media file for transcription.
 		local
 			l_file: RAW_FILE
 		do
-			current_file := a_path
-			current_file_name := extract_filename (a_path)
-
-			if attached lbl_file_name as al_file_name and attached current_file_name as al_current_file_name then
-				al_file_name.set_text (al_current_file_name).do_nothing
+			current_file := a_path.name
+			if attached a_path.entry as al_entry then
+				current_file_name := al_entry.name
+			else
+				current_file_name := current_file.twin
 			end
-			if attached lbl_file_info as al_file_info then
-				create l_file.make_with_name (a_path)
-				if l_file.exists then
-					al_file_info.set_text ("Size: " + format_size (l_file.count)).do_nothing
-				else
-					al_file_info.set_text ("File not found").do_nothing
-				end
+			lbl_file_name.set_text (current_file_name)
+			create l_file.make_with_path (a_path)
+			if l_file.exists then
+				lbl_file_info.set_text ("Size: " + format_size (l_file.count))
+			else
+				lbl_file_info.set_text ("File not found")
 			end
-			if attached lbl_status as al_status and attached current_file_name as al_current_file_name then
-				al_status.set_text ("Ready to transcribe: " + al_current_file_name).do_nothing
+			if not is_running then
+				lbl_status.set_text ({STRING_32} "Ready to transcribe: " + current_file_name)
 			end
-
-			-- Enable transcribe button
-			if attached btn_transcribe as al_btn_transcribe then
-				al_btn_transcribe.enable
-			end
-
-			-- Trigger state transition
-			if attached state as al_state then
-				al_state.trigger ("file_opened").do_nothing
-			end
+			status_bar.set_text (current_file)
+			show_buttons
 		end
 
 	on_transcribe
-			-- Handle Transcribe button click - starts async transcription.
+			-- Start a job on the relay; the window goes on at once.
 		do
-			if attached current_file as al_current_file then
-				-- Update UI
-				if attached lbl_status as al_status then
-					al_status.set_text ("Starting transcription...").do_nothing
-				end
-				if attached progress as al_progress then
-					al_progress.set_value (0)
-				end
-
-				-- Toggle buttons
-				if attached btn_transcribe as al_btn then
-					al_btn.disable
-				end
-				if attached btn_cancel as al_btn then
-					al_btn.enable
-				end
-
-				-- Disable export buttons during transcription
-				if attached btn_export_vtt as al_btn then al_btn.disable end
-				if attached btn_export_srt as al_btn then al_btn.disable end
-				if attached btn_export_json as al_btn then al_btn.disable end
-
-				-- State transition
-				if attached state as al_state then
-					al_state.trigger ("transcribe").do_nothing
-				end
-
-				-- Start async transcription (non-blocking!)
-				start_async_transcription (transcriber, al_current_file, Current)
+			if not is_running and not current_file.is_empty then
+				is_running := True
+				cancel_requested := False
+				transcribed_segments.wipe_out
+				transcribed_chapters.wipe_out
+				segment_list.wipe_out
+				chapter_list.wipe_out
+				lbl_status.set_text ("Starting transcription...")
+				progress.set_value (0)
+				start_job (relay, current_file)
+				show_buttons
 			end
 		end
 
 	on_cancel
-			-- Handle Cancel button click.
+			-- Drop the running job's results; the window is ready again at once.
 		do
-			cancel_transcription (transcriber)
-			if attached lbl_status as al_status then
-				al_status.set_text ("Cancelling...").do_nothing
+			if is_running then
+				cancel_requested := True
+				progress.set_value (0)
+				lbl_status.set_text ("Cancelled. The current step finishes in the background.")
+				show_buttons
 			end
 		end
 
-feature -- SPEECH_PROGRESS_HANDLER Implementation
-
-	on_progress (a_percent: INTEGER; a_phase: separate READABLE_STRING_GENERAL)
-			-- Called when transcription progress updates.
-			-- SCOOP ensures this runs on the UI processor.
+	on_message (a_tag: INTEGER; a_payload: STRING_32)
+			-- A message from the relay.
 		do
-			if attached lbl_status as al_status then
-				al_status.set_text (import_string (a_phase)).do_nothing
-			end
-			if attached progress as al_progress then
-				al_progress.set_value (a_percent)
-			end
-          -- Force immediate repaint
-          ev_application.process_graphical_events
-		end
-
-	on_transcription_complete (a_segments: separate ARRAYED_LIST [SPEECH_SEGMENT]; a_chapters: separate ARRAYED_LIST [SPEECH_CHAPTER])
-			-- Called when transcription successfully completes.
-		do
-			-- Store results locally (copy from separate to local)
-			transcribed_segments.wipe_out
-			copy_segments (a_segments)
-			transcribed_chapters.wipe_out
-			copy_chapters (a_chapters)
-
-			-- Update UI
-			update_segment_list
-			update_chapter_list
-
-			if attached lbl_status as al_status then
-				al_status.set_text ("Completed: " + transcribed_segments.count.out + " segments, " + transcribed_chapters.count.out + " chapters").do_nothing
-			end
-			if attached progress as al_progress then
-				al_progress.set_value (100)
-			end
-
-			-- Enable export buttons
-			if attached btn_export_vtt as al_btn then al_btn.enable end
-			if attached btn_export_srt as al_btn then al_btn.enable end
-			if attached btn_export_json as al_btn then al_btn.enable end
-
-			-- Toggle buttons back
-			if attached btn_transcribe as al_btn then
-				al_btn.enable
-			end
-			if attached btn_cancel as al_btn then
-				al_btn.disable
-			end
-
-			-- State transition
-			if attached state as al_state then
-				al_state.trigger ("done").do_nothing
-			end
-		end
-
-	on_transcription_error (a_message: separate READABLE_STRING_GENERAL)
-			-- Called when transcription fails.
-		do
-			if attached lbl_status as al_status then
-				al_status.set_text ("Error: " + import_string (a_message)).do_nothing
-			end
-
-			-- Toggle buttons back
-			if attached btn_transcribe as al_btn then
-				al_btn.enable
-			end
-			if attached btn_cancel as al_btn then
-				al_btn.disable
-			end
-
-			-- State transition
-			if attached state as al_state then
-				al_state.trigger ("failed").do_nothing
-			end
-		end
-
-	on_transcription_cancelled
-			-- Called when transcription is cancelled.
-		do
-			if attached lbl_status as al_status and attached current_file_name as al_file_name then
-				al_status.set_text ("Cancelled. Ready to transcribe: " + al_file_name).do_nothing
-			end
-			if attached progress as al_progress then
-				al_progress.set_value (0)
-			end
-
-			-- Toggle buttons back
-			if attached btn_transcribe as al_btn then
-				al_btn.enable
-			end
-			if attached btn_cancel as al_btn then
-				al_btn.disable
-			end
-
-			-- State transition
-			if attached state as al_state then
-				al_state.trigger ("cancelled").do_nothing
-			end
-		end
-
-feature {NONE} -- SCOOP Helpers
-
-	start_async_transcription (a_transcriber: separate SPEECH_ASYNC_TRANSCRIBER; a_file: STRING; a_handler: separate SPEECH_PROGRESS_HANDLER)
-			-- Start transcription on separate processor (SCOOP pattern).
-		do
-			a_transcriber.transcribe_async (a_file, a_handler)
-		end
-
-	cancel_transcription (a_transcriber: separate SPEECH_ASYNC_TRANSCRIBER)
-			-- Request cancellation on separate processor.
-		do
-			a_transcriber.cancel
-		end
-
-feature {NONE} -- SCOOP Data Import
-
-	import_string (a_separate: separate READABLE_STRING_GENERAL): STRING
-			-- Import string from separate object (char-by-char copy for SCOOP).
-		local
-			i: INTEGER
-		do
-			create Result.make (a_separate.count)
-			from i := 1 until i > a_separate.count loop
-				Result.extend (a_separate.item (i).to_character_8)
-				i := i + 1
-			end
-		end
-
-	copy_segments (a_segments: separate ARRAYED_LIST [SPEECH_SEGMENT])
-			-- Copy segments from separate list to local storage.
-		local
-			i: INTEGER
-			l_seg: separate SPEECH_SEGMENT
-		do
-			from i := 1 until i > a_segments.count loop
-				l_seg := a_segments.i_th (i)
-				transcribed_segments.extend (import_segment (l_seg))
-				i := i + 1
-			end
-		end
-
-	copy_chapters (a_chapters: separate ARRAYED_LIST [SPEECH_CHAPTER])
-			-- Copy chapters from separate list to local storage.
-		local
-			i: INTEGER
-			l_ch: separate SPEECH_CHAPTER
-		do
-			from i := 1 until i > a_chapters.count loop
-				l_ch := a_chapters.i_th (i)
-				transcribed_chapters.extend (import_chapter (l_ch))
-				i := i + 1
-			end
-		end
-
-	import_segment (a_seg: separate SPEECH_SEGMENT): SPEECH_SEGMENT
-			-- Create local copy of separate segment.
-		do
-			create Result.make (import_string (a_seg.text), a_seg.start_time, a_seg.end_time)
-		end
-
-	import_chapter (a_ch: separate SPEECH_CHAPTER): SPEECH_CHAPTER
-			-- Create local copy of separate chapter.
-		do
-			create Result.make_with_title (a_ch.start_time, a_ch.end_time, import_string (a_ch.title))
-		end
-
-feature {NONE} -- UI Updates
-
-	update_segment_list
-			-- Populate segment list with transcribed text.
-		do
-			if attached segment_list as al_segment_list then
-				al_segment_list.clear
-				across transcribed_segments as seg loop
-					al_segment_list.add_item (format_timestamp (seg.start_time).to_string_32 + {STRING_32} " - " + seg.text)
+			if cancel_requested then
+				if a_tag = Tag_done or a_tag = Tag_error or a_tag = Tag_cancelled then
+					is_running := False
+					cancel_requested := False
+					transcribed_segments.wipe_out
+					transcribed_chapters.wipe_out
+					lbl_status.set_text ({STRING_32} "Cancelled. Ready to transcribe: " + current_file_name)
+					show_buttons
+				end
+			else
+				inspect a_tag
+				when Tag_progress then
+					progress.set_value (field (a_payload, 1).to_integer.max (0).min (100))
+					lbl_status.set_text (rest (a_payload, 1))
+				when Tag_segment then
+					transcribed_segments.extend (create {SPEECH_SEGMENT}.make (rest (a_payload, 2),
+						field (a_payload, 1).to_double, field (a_payload, 2).to_double))
+				when Tag_chapter then
+					transcribed_chapters.extend (create {SPEECH_CHAPTER}.make_with_title (
+						field (a_payload, 1).to_double, field (a_payload, 2).to_double, rest (a_payload, 2)))
+				when Tag_done then
+					is_running := False
+					update_lists
+					progress.set_value (100)
+					lbl_status.set_text ("Completed: " + transcribed_segments.count.out + " segments, " + transcribed_chapters.count.out + " chapters")
+					show_buttons
+				when Tag_error then
+					is_running := False
+					lbl_status.set_text ({STRING_32} "Error: " + a_payload)
+					show_buttons
+				when Tag_cancelled then
+					is_running := False
+					progress.set_value (0)
+					lbl_status.set_text ({STRING_32} "Cancelled. Ready to transcribe: " + current_file_name)
+					show_buttons
+				else
 				end
 			end
 		end
 
-	update_chapter_list
-			-- Populate chapter list.
-		do
-			if attached chapter_list as al_chapter_list then
-				al_chapter_list.clear
-				across transcribed_chapters as ch loop
-					al_chapter_list.add_item (format_timestamp (ch.start_time).to_string_32 + {STRING_32} " - " + ch.title)
-				end
-			end
-		end
-
-feature -- Export Handlers
+feature -- Export handlers
 
 	on_export_vtt
-			-- Export to VTT format.
 		local
-			l_dialog: SV_FILE_DIALOG
-			l_path: STRING_32
 			l_exporter: VTT_EXPORTER
 		do
-			l_dialog := sv.save_file_dialog
-			l_dialog := l_dialog.filter ("WebVTT", "*.vtt")
-			l_dialog := l_dialog.default_name (safe_filename + ".vtt")
-			if attached main_window as al_main_window then
-				l_dialog.show (al_main_window)
-				l_path := l_dialog.file_name
-				if not l_path.is_empty then
-					create l_exporter.make
-					l_exporter.set_segments (transcribed_segments)
-					if l_exporter.export_to_file (l_path.to_string_8) then
-						show_info ("Exported to " + l_path.to_string_8)
-					else
-						show_info ("Export failed")
-					end
-				end
+			if attached save_path ("Export WebVTT", "vtt") as al_path then
+				create l_exporter.make
+				l_exporter.set_segments (transcribed_segments)
+				report_export (l_exporter.export_to_file (al_path), al_path)
 			end
 		end
 
 	on_export_srt
-			-- Export to SRT format.
 		local
-			l_dialog: SV_FILE_DIALOG
-			l_path: STRING_32
 			l_exporter: SRT_EXPORTER
 		do
-			l_dialog := sv.save_file_dialog
-			l_dialog := l_dialog.filter ("SubRip", "*.srt")
-			l_dialog := l_dialog.default_name (safe_filename + ".srt")
-			if attached main_window as al_main_window then
-				l_dialog.show (al_main_window)
-				l_path := l_dialog.file_name
-				if not l_path.is_empty then
-					create l_exporter.make
-					l_exporter.set_segments (transcribed_segments)
-					if l_exporter.export_to_file (l_path.to_string_8) then
-						show_info ("Exported to " + l_path.to_string_8)
-					else
-						show_info ("Export failed")
-					end
-				end
+			if attached save_path ("Export SubRip", "srt") as al_path then
+				create l_exporter.make
+				l_exporter.set_segments (transcribed_segments)
+				report_export (l_exporter.export_to_file (al_path), al_path)
 			end
 		end
 
 	on_export_json
-			-- Export to JSON format.
 		local
-			l_dialog: SV_FILE_DIALOG
-			l_path: STRING_32
 			l_exporter: JSON_EXPORTER
 		do
-			l_dialog := sv.save_file_dialog
-			l_dialog := l_dialog.filter ("JSON", "*.json")
-			l_dialog := l_dialog.default_name (safe_filename + ".json")
-			if attached main_window as al_main_window then
-				l_dialog.show (al_main_window)
-				l_path := l_dialog.file_name
-				if not l_path.is_empty then
-					create l_exporter.make
-					l_exporter.set_segments (transcribed_segments)
-					if l_exporter.export_to_file (l_path.to_string_8) then
-						show_info ("Exported to " + l_path.to_string_8)
-					else
-						show_info ("Export failed")
-					end
+			if attached save_path ("Export JSON", "json") as al_path then
+				create l_exporter.make
+				l_exporter.set_segments (transcribed_segments)
+				report_export (l_exporter.export_to_file (al_path), al_path)
+			end
+		end
+
+feature {NONE} -- Implementation
+
+	start_job (a_relay: separate SPEECH_STUDIO_RELAY; a_path: STRING_32)
+			-- Give the relay the file, then start it. `start' takes nothing from this
+			-- processor's region, so this call does not wait for the job.
+		do
+			a_relay.set_file (a_path)
+			a_relay.start
+		end
+
+	show_buttons
+			-- Enable what makes sense now.
+		do
+			set_enabled (btn_transcribe, not is_running and not current_file.is_empty)
+			set_enabled (btn_cancel, is_running and not cancel_requested)
+			set_enabled (btn_export_vtt, not is_running and not transcribed_segments.is_empty)
+			set_enabled (btn_export_srt, not is_running and not transcribed_segments.is_empty)
+			set_enabled (btn_export_json, not is_running and not transcribed_segments.is_empty)
+		end
+
+	set_enabled (a_button: GUI_BUTTON; a_on: BOOLEAN)
+		do
+			if a_on then
+				a_button.enable
+			else
+				a_button.disable
+			end
+		end
+
+	update_lists
+		local
+			l_line: STRING_32
+		do
+			segment_list.wipe_out
+			across transcribed_segments as ic loop
+				create l_line.make_from_string_general (format_timestamp (ic.start_time))
+				l_line.append ({STRING_32} " - ")
+				l_line.append (ic.text)
+				segment_list.extend (l_line)
+			end
+			chapter_list.wipe_out
+			across transcribed_chapters as ic loop
+				create l_line.make_from_string_general (format_timestamp (ic.start_time))
+				l_line.append ({STRING_32} " - ")
+				l_line.append (ic.title)
+				chapter_list.extend (l_line)
+			end
+		end
+
+	save_path (a_title: STRING; a_extension: STRING): detachable STRING_32
+			-- A path the user chose, ending in `a_extension'.
+		local
+			l_suffix: STRING_32
+		do
+			if attached app.dialogs.save_file (a_title, {ARRAY [READABLE_STRING_GENERAL]} <<a_extension>>) as al_path then
+				Result := al_path.name.twin
+				create l_suffix.make_from_string_general ("." + a_extension)
+				if not Result.as_lower.ends_with (l_suffix) then
+					Result.append (l_suffix)
 				end
 			end
 		end
 
-feature {NONE} -- Utilities
-
-	extract_filename (a_path: STRING): STRING
-			-- Extract just the filename from a path.
-		local
-			l_index: INTEGER
+	report_export (a_ok: BOOLEAN; a_path: STRING_32)
 		do
-			l_index := a_path.last_index_of ('\', a_path.count)
-			if l_index = 0 then
-				l_index := a_path.last_index_of ('/', a_path.count)
-			end
-			if l_index > 0 and l_index < a_path.count then
-				Result := a_path.substring (l_index + 1, a_path.count)
+			if a_ok then
+				app.dialogs.inform ("Speech Studio", {STRING_32} "Exported to " + a_path)
 			else
-				Result := a_path
+				app.dialogs.inform ("Speech Studio", {STRING_32} "Export failed: " + a_path)
+			end
+		end
+
+	field (a_payload: STRING_32; n: INTEGER): STRING_32
+			-- Field `n' (1-based) of a tab-separated payload.
+		require
+			positive: n >= 1
+		local
+			l_fields: LIST [STRING_32]
+		do
+			l_fields := a_payload.split ('%T')
+			if n <= l_fields.count then
+				Result := l_fields.i_th (n)
+			else
+				create Result.make_empty
+			end
+		end
+
+	rest (a_payload: STRING_32; n: INTEGER): STRING_32
+			-- Everything after the first `n' tabs (the last field may hold tabs).
+		local
+			i, l_tabs: INTEGER
+		do
+			from
+				i := 1
+			until
+				i > a_payload.count or l_tabs = n
+			loop
+				if a_payload.item (i) = '%T' then
+					l_tabs := l_tabs + 1
+				end
+				i := i + 1
+			end
+			if l_tabs = n then
+				Result := a_payload.substring (i, a_payload.count)
+			else
+				create Result.make_empty
 			end
 		end
 
 	format_size (a_bytes: INTEGER): STRING
-			-- Format file size for display.
+			-- File size for display.
 		do
 			if a_bytes >= 1048576 then
 				Result := (a_bytes // 1048576).out + " MB"
@@ -638,7 +423,7 @@ feature {NONE} -- Utilities
 		end
 
 	format_timestamp (a_seconds: REAL_64): STRING
-			-- Format seconds as MM:SS.
+			-- Seconds as M:SS.
 		local
 			l_mins, l_secs: INTEGER
 		do
@@ -648,36 +433,6 @@ feature {NONE} -- Utilities
 				Result := l_mins.out + ":0" + l_secs.out
 			else
 				Result := l_mins.out + ":" + l_secs.out
-			end
-		end
-
-	safe_filename: STRING
-			-- Get safe filename for export (without extension).
-		local
-			l_name: STRING
-			l_dot: INTEGER
-		do
-			if attached current_file_name as al_current_file_name then
-				l_name := al_current_file_name.twin
-				l_dot := l_name.last_index_of ('.', l_name.count)
-				if l_dot > 1 then
-					Result := l_name.substring (1, l_dot - 1)
-				else
-					Result := l_name
-				end
-			else
-				Result := "transcript"
-			end
-		end
-
-	show_info (a_message: STRING)
-			-- Show information message.
-		local
-			l_message_box: SV_MESSAGE_BOX
-		do
-			l_message_box := sv.info_box (a_message)
-			if attached main_window as al_main_window then
-				l_message_box.show (al_main_window)
 			end
 		end
 
